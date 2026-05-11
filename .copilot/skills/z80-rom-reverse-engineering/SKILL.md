@@ -275,6 +275,66 @@ z80asm -o /tmp/roundtrip.bin annotated.asm
 cmp ORIGINAL.BIN /tmp/roundtrip.bin
 ```
 
+### Phase 9: Meaningful Label Names for Branch Targets
+
+After subroutines, RAM variables, and constants are symbolified, the remaining auto-generated labels (e.g. `l0009h`, `l06a9h`) are local branch targets — loop bodies, error exits, conditional branches, and fallthrough points. Renaming them eliminates the need to mentally trace every jump.
+
+#### Step 1: Inventory auto-labels
+
+```sh
+grep -c '^l[0-9a-f]\+h:' annotated.asm
+```
+
+Expect dozens (40–80 in a typical boot ROM). Each is a `jr`/`jp`/`djnz` target.
+
+#### Step 2: Categorize by surrounding context
+
+Read the code around each label and assign it to one of these naming patterns:
+
+| Pattern | Convention | Examples |
+|---------|-----------|----------|
+| Busy-wait / polling loop | `wait_<what>` | `wait_fdc_idle`, `wait_seek_done`, `wait_video_sync` |
+| Countdown / iteration loop | `<thing>_loop` | `delay_loop`, `div_loop`, `timer_count_loop` |
+| Inner loop body | `<outer>_<action>` | `ram_write_byte`, `dump_byte`, `hex_next_char` |
+| Conditional branch (if-true) | `<what_happens>` | `check_bank2`, `set_single_density`, `toggle_half` |
+| Error / failure exit | `<subsystem>_fail` or `<subsystem>_error` | `post_vram_fail`, `fdc_test_fail`, `cmd_mem_error` |
+| Retry after failure | `retry_<action>` | `retry_seek_read` |
+| Skip / fallthrough point | `<context>_done` or `<context>_next` | `putchar_done`, `mem_modify_next`, `post_next_error` |
+| Setup/init sub-step | `setup_<what>` or `<what>_common` | `setup_drive1`, `setup_drive_common` |
+
+#### Step 3: Build a sed replacement script
+
+Construct one `sed` invocation with `-e 's/old/new/g'` per label. Use global replacement (`/g`) so both the definition and all references are renamed atomically:
+
+```sh
+sed -i '' \
+  -e 's/l0009h/delay_loop/g' \
+  -e 's/l0016h/wait_lucy_sync/g' \
+  -e 's/l06a9h/copy_ramtest_high/g' \
+  ... \
+  annotated.asm
+```
+
+**Naming guidelines:**
+- Use `snake_case`, consistent with subroutine and variable names
+- Prefix with the parent subroutine or subsystem name when the label is only meaningful in that context (e.g. `ram_write_byte` inside `post_ram_test`)
+- Keep names short (2–4 words) — these are local targets, not public API
+- Avoid generic names like `label1` or `branch_target` — every label should tell you *what happens* at that address
+
+#### Step 4: Verify zero auto-labels remain
+
+```sh
+grep -c '^l[0-9a-f]\+h:' annotated.asm   # should print 0
+grep -E 'l[0-9a-f]{4}h' annotated.asm     # should produce no output
+```
+
+#### Step 5: Round-trip verify
+
+```sh
+z80asm -o /tmp/roundtrip.bin annotated.asm
+cmp ORIGINAL.BIN /tmp/roundtrip.bin
+```
+
 ## Iterative Refinement
 
 Reverse engineering is iterative. After each pass:

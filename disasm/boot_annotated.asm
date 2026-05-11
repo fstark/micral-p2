@@ -113,20 +113,20 @@ reset_init_start:
 	ld a,SYS_KBD_ENABLE		;0003	3e 22		> "
 	out (PORT_SYS_CTRL),a		;0005	d3 20		.  
 	ld b,030h		;0007	06 30		. 0
-l0009h:
-	djnz l0009h		;0009	10 fe		. .
+delay_loop:
+	djnz delay_loop		;0009	10 fe		. .
 	xor a			;000b	af		.
 	out (PORT_SYS_CTRL),a		;000c	d3 20		.  
 	ld a,LUCY_REG_SYNC		;000e	3e 03		> .
 	out (PORT_LUCY_REG),a		;0010	d3 60		. `
 	ld a,LUCY_SYNC_BIT		;0012	3e 20		>  
 	out (PORT_LUCY_DATA),a		;0014	d3 70		. p
-l0016h:
+wait_lucy_sync:
 	ld a,LUCY_REG_SYNC		;0016	3e 03		> .
 	out (PORT_LUCY_REG),a		;0018	d3 60		. `
 	in a,(PORT_LUCY_DATA)		;001a	db 70		. p
 	and LUCY_SYNC_BIT		;001c	e6 20		.  
-	jr nz,l0016h		;001e	20 f6		  .
+	jr nz,wait_lucy_sync		;001e	20 f6		  .
 	ld a,LUCY_REG_SCAN		;0020	3e 06		> .
 	out (PORT_LUCY_REG),a		;0022	d3 60		. `
 	ld a,LUCY_SCAN_ALL		;0024	3e ff		> .
@@ -237,13 +237,13 @@ monitor_start:
 	xor a			;0096	af		.
 	ld (sys_flags),a		;0097	32 f3 bf	2 . .
 	ld hl,str_prompt	;009a	21 8a 07	! . .
-l009dh:
+print_str_loop:
 	ld c,(hl)		;009d	4e		N
 	call putchar		;009e	cd cd 04	. . .
 	inc hl			;00a1	23		#
 	ld a,(hl)		;00a2	7e		~
 	or a			;00a3	b7		.
-	jr nz,l009dh		;00a4	20 f7		  .
+	jr nz,print_str_loop		;00a4	20 f7		  .
 	ld b,000h		;00a6	06 00		. .
 	call get_char_echo	;00a8	cd c9 04	. . .
 	ld a,c			;00ab	79		y
@@ -269,7 +269,7 @@ cmd_boot_parse:
 	ex af,af'		;00d2	08		.
 	call parse_hex		;00d3	cd f1 02	. . .
 	dec b			;00d6	05		.
-	jp m,l0330h		;00d7	fa 30 03	. 0 .
+	jp m,cmd_boot_default		;00d7	fa 30 03	. 0 .
 	ld a,c			;00da	79		y
 	cp ','			;00db	fe 2c		. ,
 	jr nz,cmd_error		;00dd	20 ec		  .
@@ -298,12 +298,12 @@ boot_loader_start:
 setup_fdc_flags:
 	ld hl,sys_flags		;00ff	21 f3 bf	! . .
 	dec b			;0102	05		.
-	jr z,l0109h		;0103	28 04		( .
+	jr z,setup_drive1		;0103	28 04		( .
 	set 2,(hl)		;0105	cb d6		. .
-	jr l010bh		;0107	18 02		. .
-l0109h:
+	jr setup_drive_common		;0107	18 02		. .
+setup_drive1:
 	set 3,(hl)		;0109	cb de		. .
-l010bh:
+setup_drive_common:
 	set 4,(hl)		;010b	cb e6		. .
 	ld a,(hl)		;010d	7e		~
 	out (PORT_SYS_CTRL),a		;010e	d3 20		.  
@@ -314,13 +314,13 @@ wait_drive_ready:
 	bit 7,a			;0118	cb 7f		. .
 	jr nz,wait_drive_ready	;011a	20 fa		  .
 	ld de,0c000h		;011c	11 00 c0	. . .
-l011fh:
+settle_delay:
 	ex (sp),hl		;011f	e3		.
 	ex (sp),hl		;0120	e3		.
 	dec de			;0121	1b		.
 	ld a,e			;0122	7b		{
 	or d			;0123	b2		.
-	jr nz,l011fh		;0124	20 f9		  .
+	jr nz,settle_delay		;0124	20 f9		  .
 read_boot_sector:
 	call fdc_restore	;0126	cd 51 02	. Q .
 	ld hl,(floppy_prm_ptr)		;0129	2a f5 bf	* . .
@@ -341,13 +341,13 @@ read_boot_sector:
 	ld hl,0fffdh		;0146	21 fd ff	! . .
 	ld (hl),000h		;0149	36 00		6 .
 	bit 7,a			;014b	cb 7f		. .
-	jr z,l0151h		;014d	28 02		( .
+	jr z,check_bank2		;014d	28 02		( .
 	set 1,(hl)		;014f	cb ce		. .
-l0151h:
+check_bank2:
 	bit 6,a			;0151	cb 77		. w
-	jr z,l0157h		;0153	28 02		( .
+	jr z,begin_record_load		;0153	28 02		( .
 	set 2,(hl)		;0155	cb d6		. .
-l0157h:
+begin_record_load:
 	ld hl,reset		;0157	21 00 00	! . .
 	ld (buf_remain),hl		;015a	22 eb bf	" . .
 parse_record:
@@ -377,9 +377,9 @@ dispatch_record:
 	jp c,cmd_error		;0189	da cb 00	. . .
 	cp REC_TYPE_MAX		;018c	fe db		. .
 	jp nc,cmd_error		;018e	d2 cb 00	. . .
-l0191h:
+skip_record_bytes:
 	call get_next_byte	;0191	cd bd 01	. . .
-	jr l0191h		;0194	18 fb		. .
+	jr skip_record_bytes		;0194	18 fb		. .
 load_data_record:
 	call get_next_byte	;0196	cd bd 01	. . .
 	ld (hl),a		;0199	77		w
@@ -410,16 +410,16 @@ get_next_byte:
 fdc_io_start:
 	inc c			;01bd	0c		.
 	dec c			;01be	0d		.
-	jr nz,l01c5h		;01bf	20 04		  .
+	jr nz,get_byte_body		;01bf	20 04		  .
 	pop af			;01c1	f1		.
 	inc c			;01c2	0c		.
 	jr parse_record		;01c3	18 98		. .
-l01c5h:
+get_byte_body:
 	push hl			;01c5	e5		.
 	ld hl,(buf_remain)		;01c6	2a eb bf	* . .
 	ld a,h			;01c9	7c		|
 	or l			;01ca	b5		.
-	jr nz,l01ebh		;01cb	20 1e		  .
+	jr nz,buf_has_data		;01cb	20 1e		  .
 	push hl			;01cd	e5		.
 	push de			;01ce	d5		.
 	push bc			;01cf	c5		.
@@ -434,12 +434,12 @@ l01c5h:
 	ld hl,setup_fdc_flags	;01e0	21 ff 00	! . .
 	ld (buf_remain),hl		;01e3	22 eb bf	" . .
 	ld hl,sector_buf		;01e6	21 e9 be	! . .
-	jr l01f2h		;01e9	18 07		. .
-l01ebh:
+	jr read_from_buf		;01e9	18 07		. .
+buf_has_data:
 	dec hl			;01eb	2b		+
 	ld (buf_remain),hl		;01ec	22 eb bf	" . .
 	ld hl,(buf_rd_ptr)		;01ef	2a e9 bf	* . .
-l01f2h:
+read_from_buf:
 	ld a,(hl)		;01f2	7e		~
 	inc hl			;01f3	23		#
 	ld (buf_rd_ptr),hl		;01f4	22 e9 bf	" . .
@@ -461,50 +461,50 @@ read_next_sector:
 	ld a,l			;020c	7d		}
 	or a			;020d	b7		.
 	rra			;020e	1f		.
-	jr nc,l0213h		;020f	30 02		0 .
+	jr nc,set_track		;020f	30 02		0 .
 	ld b,002h		;0211	06 02		. .
-l0213h:
+set_track:
 	ld (fdc_track),a		;0213	32 f0 bf	2 . .
 	ld a,b			;0216	78		x
 	ld (fdc_side),a		;0217	32 f4 bf	2 . .
-l021ah:
+try_seek_read:
 	call fdc_seek_read	;021a	cd 74 02	. t .
-	jr nz,l023bh		;021d	20 1c		  .
+	jr nz,retry_seek_read		;021d	20 1c		  .
 	ld hl,sys_flags		;021f	21 f3 bf	! . .
 	ld a,(fdc_track)		;0222	3a f0 bf	: . .
 	cp DD_TRACK_THRESH		;0225	fe 16		. .
-	jr c,l022dh		;0227	38 04		8 .
+	jr c,set_single_density		;0227	38 04		8 .
 	set 7,(hl)		;0229	cb fe		. .
-	jr l022fh		;022b	18 02		. .
-l022dh:
+	jr apply_density		;022b	18 02		. .
+set_single_density:
 	res 7,(hl)		;022d	cb be		. .
-l022fh:
+apply_density:
 	ld a,(hl)		;022f	7e		~
 	out (PORT_SYS_CTRL),a		;0230	d3 20		.  
 	call fdc_read_sector	;0232	cd d2 02	. . .
 	dec a			;0235	3d		=
-	jr nz,l023bh		;0236	20 03		  .
+	jr nz,retry_seek_read		;0236	20 03		  .
 	pop hl			;0238	e1		.
 	inc hl			;0239	23		#
 	ret			;023a	c9		.
-l023bh:
+retry_seek_read:
 	call fdc_restore	;023b	cd 51 02	. Q .
-	jr l021ah		;023e	18 da		. .
+	jr try_seek_read		;023e	18 da		. .
 div_hl_e:
 	xor a			;0240	af		.
 	ld d,010h		;0241	16 10		. .
-l0243h:
+div_loop:
 	add hl,hl		;0243	29		)
 	rla			;0244	17		.
-	jr c,l024ah		;0245	38 03		8 .
+	jr c,div_subtract		;0245	38 03		8 .
 	cp e			;0247	bb		.
-	jr c,l024ch		;0248	38 02		8 .
-l024ah:
+	jr c,div_next_bit		;0248	38 02		8 .
+div_subtract:
 	inc l			;024a	2c		,
 	sub e			;024b	93		.
-l024ch:
+div_next_bit:
 	dec d			;024c	15		.
-	jr nz,l0243h		;024d	20 f4		  .
+	jr nz,div_loop		;024d	20 f4		  .
 	ld b,a			;024f	47		G
 	ret			;0250	c9		.
 fdc_restore:
@@ -512,53 +512,53 @@ fdc_restore:
 	call fdc_send_cmd	;0253	cd ca 02	. . .
 	ld a,FDC_CMD_RESTORE		;0256	3e 0f		> .
 	call fdc_send_cmd	;0258	cd ca 02	. . .
-l025bh:
+wait_restore_done:
 	in a,(PORT_FDC_CMD)		;025b	db 10		. .
 	bit 0,a			;025d	cb 47		. G
-	jr nz,l025bh		;025f	20 fa		  .
+	jr nz,wait_restore_done		;025f	20 fa		  .
 	bit 2,a			;0261	cb 57		. W
-	jr nz,l0267h		;0263	20 02		  .
+	jr nz,restore_settle		;0263	20 02		  .
 	ld a,0ffh		;0265	3e ff		> .
-l0267h:
+restore_settle:
 	push af			;0267	f5		.
 	push hl			;0268	e5		.
 	ld hl,003e8h		;0269	21 e8 03	! . .
-l026ch:
+settle_delay_loop:
 	dec hl			;026c	2b		+
 	ld a,h			;026d	7c		|
 	or l			;026e	b5		.
-	jr nz,l026ch		;026f	20 fb		  .
+	jr nz,settle_delay_loop		;026f	20 fb		  .
 	pop hl			;0271	e1		.
 	pop af			;0272	f1		.
 	ret			;0273	c9		.
 fdc_seek_read:
 	ld a,FDC_CMD_FORCE_INT		;0274	3e d0		> .
 	call fdc_send_cmd	;0276	cd ca 02	. . .
-l0279h:
+wait_fdc_idle:
 	in a,(PORT_FDC_CMD)		;0279	db 10		. .
 	bit 0,a			;027b	cb 47		. G
-	jr nz,l0279h		;027d	20 fa		  .
+	jr nz,wait_fdc_idle		;027d	20 fa		  .
 	push bc			;027f	c5		.
 	ld b,002h		;0280	06 02		. .
-l0282h:
+read_addr_mark:
 	ld a,FDC_CMD_READ_ADDR		;0282	3e c4		> .
 	call fdc_send_cmd	;0284	cd ca 02	. . .
-l0287h:
+wait_addr_done:
 	in a,(PORT_FDC_CMD)		;0287	db 10		. .
 	bit 0,a			;0289	cb 47		. G
 	jr z,fdc_check_status	;028b	28 1b		( .
-	jr l0287h		;028d	18 f8		. .
+	jr wait_addr_done		;028d	18 f8		. .
 fdc_step_in:
 	ld a,FDC_CMD_FORCE_INT		;028f	3e d0		> .
 	call fdc_send_cmd	;0291	cd ca 02	. . .
 	ld a,FDC_CMD_STEP_IN		;0294	3e 5f		> _
 	call fdc_send_cmd	;0296	cd ca 02	. . .
-l0299h:
+wait_step_done:
 	in a,(PORT_FDC_CMD)		;0299	db 10		. .
 	bit 0,a			;029b	cb 47		. G
-	jr nz,l0299h		;029d	20 fa		  .
+	jr nz,wait_step_done		;029d	20 fa		  .
 	dec b			;029f	05		.
-	jr nz,l0282h		;02a0	20 e0		  .
+	jr nz,read_addr_mark		;02a0	20 e0		  .
 	call fdc_restore	;02a2	cd 51 02	. Q .
 	pop bc			;02a5	c1		.
 	jr fdc_seek_read	;02a6	18 cc		. .
@@ -574,20 +574,20 @@ fdc_check_status:
 	out (PORT_FDC_DATA),a		;02b8	d3 13		. .
 	ld a,FDC_CMD_SEEK		;02ba	3e 1f		> .
 	call fdc_send_cmd	;02bc	cd ca 02	. . .
-l02bfh:
+wait_seek_done:
 	in a,(PORT_FDC_CMD)		;02bf	db 10		. .
 	bit 0,a			;02c1	cb 47		. G
-	jr nz,l02bfh		;02c3	20 fa		  .
+	jr nz,wait_seek_done		;02c3	20 fa		  .
 	and FDC_STAT_ERR_SEEK		;02c5	e6 18		. .
 	jr nz,fdc_seek_read	;02c7	20 ab		  .
 	ret			;02c9	c9		.
 fdc_send_cmd:
 	out (PORT_FDC_CMD),a		;02ca	d3 10		. .
 	ld a,040h		;02cc	3e 40		> @
-l02ceh:
+cmd_delay_loop:
 	dec a			;02ce	3d		=
 	ret z			;02cf	c8		.
-	jr l02ceh		;02d0	18 fc		. .
+	jr cmd_delay_loop		;02d0	18 fc		. .
 fdc_read_sector:
 	ld a,(fdc_sector)		;02d2	3a ef bf	: . .
 	out (PORT_FDC_SECTOR),a		;02d5	d3 12		. .
@@ -596,10 +596,10 @@ fdc_read_sector:
 	ld a,(fdc_side)		;02dc	3a f4 bf	: . .
 	or b			;02df	b0		.
 	call fdc_send_cmd	;02e0	cd ca 02	. . .
-l02e3h:
+wait_read_done:
 	in a,(PORT_FDC_CMD)		;02e3	db 10		. .
 	bit 0,a			;02e5	cb 47		. G
-	jr nz,l02e3h		;02e7	20 fa		  .
+	jr nz,wait_read_done		;02e7	20 fa		  .
 	and FDC_STAT_ERR_READ		;02e9	e6 3c		. <
 	ld a,000h		;02eb	3e 00		> .
 	ret nz			;02ed	c0		.
@@ -612,16 +612,16 @@ parse_hex:
 hex_parser_start:
 	ld de,reset		;02f1	11 00 00	. . .
 	ld b,e			;02f4	43		C
-l02f5h:
+hex_next_char:
 	call get_char_echo	;02f5	cd c9 04	. . .
 	ld a,c			;02f8	79		y
 	sub '0'			;02f9	d6 30		. 0
 	cp LF			;02fb	fe 0a		. .
-	jr c,l0304h		;02fd	38 05		8 .
+	jr c,hex_digit_valid		;02fd	38 05		8 .
 	cp 011h			;02ff	fe 11		. .
 	ret c			;0301	d8		.
 	sub 007h		;0302	d6 07		. .
-l0304h:
+hex_digit_valid:
 	cp 010h			;0304	fe 10		. .
 	ccf			;0306	3f		?
 	ret c			;0307	d8		.
@@ -629,13 +629,13 @@ l0304h:
 	ld l,a			;0309	6f		o
 	ld h,000h		;030a	26 00		& .
 	ld a,010h		;030c	3e 10		> .
-l030eh:
+hex_shift_loop:
 	add hl,de		;030e	19		.
 	jp c,cmd_error		;030f	da cb 00	. . .
 	dec a			;0312	3d		=
-	jr nz,l030eh		;0313	20 f9		  .
+	jr nz,hex_shift_loop		;0313	20 f9		  .
 	ex de,hl		;0315	eb		.
-	jr l02f5h		;0316	18 dd		. .
+	jr hex_next_char		;0316	18 dd		. .
 cmd_star:
 
 ; BLOCK 'cmd_star_cr_go' (start 0x0318 end 0x034f)
@@ -652,7 +652,7 @@ cmd_cr_boot:
 	ex de,hl		;032b	eb		.
 	ex af,af'		;032c	08		.
 	jp boot_floppy		;032d	c3 f6 00	. . .
-l0330h:
+cmd_boot_default:
 	ld a,c			;0330	79		y
 	cp CR			;0331	fe 0d		. .
 	jp nz,cmd_error		;0333	c2 cb 00	. . .
@@ -693,7 +693,7 @@ cmd_memory_start:
 	jr z,cmd_mem_dispatch	;0375	28 0b		( .
 	cp 'O'			;0377	fe 4f		. O
 	jr z,cmd_mem_dispatch	;0379	28 07		( .
-l037bh:
+cmd_mem_error:
 	ld c,BEL		;037b	0e 06		. .
 	call putchar		;037d	cd cd 04	. . .
 	jr cmd_memory		;0380	18 cd		. .
@@ -710,31 +710,31 @@ cmd_mem_dispatch:
 	ex af,af'		;0393	08		.
 	ld a,c			;0394	79		y
 	cp ','			;0395	fe 2c		. ,
-	jr nz,l037bh		;0397	20 e2		  .
+	jr nz,cmd_mem_error		;0397	20 e2		  .
 	push de			;0399	d5		.
 	call parse_hex		;039a	cd f1 02	. . .
 	pop hl			;039d	e1		.
 	dec b			;039e	05		.
-	jp m,l037bh		;039f	fa 7b 03	. { .
+	jp m,cmd_mem_error		;039f	fa 7b 03	. { .
 	ld a,c			;03a2	79		y
 	cp CR			;03a3	fe 0d		. .
-	jr nz,l037bh		;03a5	20 d4		  .
+	jr nz,cmd_mem_error		;03a5	20 d4		  .
 	ex af,af'		;03a7	08		.
 	cp 'O'			;03a8	fe 4f		. O
 	jr z,cmd_mem_outport	;03aa	28 48		( H
 	call compare_hl_de	;03ac	cd 47 04	. G .
-	jr nc,l037bh		;03af	30 ca		0 .
+	jr nc,cmd_mem_error		;03af	30 ca		0 .
 	ex de,hl		;03b1	eb		.
 	push hl			;03b2	e5		.
 cmd_mem_dump:
 	call print_crlf		;03b3	cd 4d 04	. M .
-l03b6h:
+dump_print_addr:
 	call print_address	;03b6	cd 65 04	. e .
 	ld a,004h		;03b9	3e 04		> .
 	ex af,af'		;03bb	08		.
-l03bch:
+dump_group:
 	ld b,004h		;03bc	06 04		. .
-l03beh:
+dump_byte:
 	ld a,(de)		;03be	1a		.
 	call print_hex_byte	;03bf	cd 51 04	. Q .
 	inc de			;03c2	13		.
@@ -747,17 +747,17 @@ l03beh:
 	jr z,cmd_mem_dump	;03cd	28 e4		( .
 	ld c,' '		;03cf	0e 20		.  
 	call putchar		;03d1	cd cd 04	. . .
-	djnz l03beh		;03d4	10 e8		. .
+	djnz dump_byte		;03d4	10 e8		. .
 	call putchar		;03d6	cd cd 04	. . .
 	ex af,af'		;03d9	08		.
 	dec a			;03da	3d		=
-	jr z,l03b6h		;03db	28 d9		( .
+	jr z,dump_print_addr		;03db	28 d9		( .
 	ex af,af'		;03dd	08		.
-	jr l03bch		;03de	18 dc		. .
+	jr dump_group		;03de	18 dc		. .
 cmd_mem_inport:
 	ld a,c			;03e0	79		y
 	cp CR			;03e1	fe 0d		. .
-	jp nz,l037bh		;03e3	c2 7b 03	. { .
+	jp nz,cmd_mem_error		;03e3	c2 7b 03	. { .
 	call print_address	;03e6	cd 65 04	. e .
 	ld b,d			;03e9	42		B
 	ld c,e			;03ea	4b		K
@@ -768,7 +768,7 @@ cmd_mem_inport:
 cmd_mem_outport:
 	ld a,d			;03f4	7a		z
 	or a			;03f5	b7		.
-	jp nz,l037bh		;03f6	c2 7b 03	. { .
+	jp nz,cmd_mem_error		;03f6	c2 7b 03	. { .
 	ld b,h			;03f9	44		D
 	ld c,l			;03fa	4d		M
 	out (c),e		;03fb	ed 59		. Y
@@ -776,8 +776,8 @@ cmd_mem_outport:
 cmd_mem_modify:
 	ld a,c			;0400	79		y
 	cp CR			;0401	fe 0d		. .
-	jp nz,l037bh		;0403	c2 7b 03	. { .
-l0406h:
+	jp nz,cmd_mem_error		;0403	c2 7b 03	. { .
+mem_modify_loop:
 	call print_address	;0406	cd 65 04	. e .
 	ex de,hl		;0409	eb		.
 	push hl			;040a	e5		.
@@ -791,14 +791,14 @@ l0406h:
 	cp '.'			;0419	fe 2e		. .
 	jp z,cmd_memory		;041b	ca 4f 03	. O .
 	cp CR			;041e	fe 0d		. .
-	jp nz,l037bh		;0420	c2 7b 03	. { .
+	jp nz,cmd_mem_error		;0420	c2 7b 03	. { .
 	dec b			;0423	05		.
-	jp m,l0428h		;0424	fa 28 04	. ( .
+	jp m,mem_modify_next		;0424	fa 28 04	. ( .
 	ld (hl),e		;0427	73		s
-l0428h:
+mem_modify_next:
 	inc hl			;0428	23		#
 	ex de,hl		;0429	eb		.
-	jr l0406h		;042a	18 da		. .
+	jr mem_modify_loop		;042a	18 da		. .
 nibble_to_ascii:
 
 ; BLOCK 'hex_output' (start 0x042c end 0x0477)
@@ -868,51 +868,51 @@ kbd_driver_start:
 	out (PORT_LUCY_REG),a		;0479	d3 60		. `
 	in a,(PORT_LUCY_DATA)		;047b	db 70		. p
 	bit 1,a			;047d	cb 4f		. O
-	jr z,l0493h		;047f	28 12		( .
+	jr z,kbd_check_repeat		;047f	28 12		( .
 	push af			;0481	f5		.
 	xor a			;0482	af		.
 	ld (kbd_state),a		;0483	32 fc bf	2 . .
 	pop af			;0486	f1		.
 	bit 0,a			;0487	cb 47		. G
 	jr z,get_kbd_char	;0489	28 ec		( .
-l048bh:
+read_kbd_data:
 	in a,(PORT_KBD_DATA)		;048b	db 30		. 0
 	and KBD_DATA_MASK		;048d	e6 7f		. .
 	ld (kbd_last),a		;048f	32 fd bf	2 . .
 	ret			;0492	c9		.
-l0493h:
+kbd_check_repeat:
 	ld a,(kbd_state)		;0493	3a fc bf	: . .
 	or a			;0496	b7		.
-	jr z,l04adh		;0497	28 14		( .
+	jr z,kbd_first_press		;0497	28 14		( .
 	in a,(PORT_LUCY_DATA)		;0499	db 70		. p
 	bit 0,a			;049b	cb 47		. G
-	jr nz,l048bh		;049d	20 ec		  .
+	jr nz,read_kbd_data		;049d	20 ec		  .
 	push bc			;049f	c5		.
 	ld bc,00a00h		;04a0	01 00 0a	. . .
-l04a3h:
+kbd_repeat_delay:
 	dec bc			;04a3	0b		.
 	ld a,b			;04a4	78		x
 	or c			;04a5	b1		.
-	jr nz,l04a3h		;04a6	20 fb		  .
+	jr nz,kbd_repeat_delay		;04a6	20 fb		  .
 	pop bc			;04a8	c1		.
-l04a9h:
+kbd_return_last:
 	ld a,(kbd_last)		;04a9	3a fd bf	: . .
 	ret			;04ac	c9		.
-l04adh:
+kbd_first_press:
 	ld a,001h		;04ad	3e 01		> .
 	ld (kbd_state),a		;04af	32 fc bf	2 . .
-l04b2h:
+kbd_wait_key:
 	in a,(PORT_LUCY_DATA)		;04b2	db 70		. p
 	bit 0,a			;04b4	cb 47		. G
-	jr z,l04b2h		;04b6	28 fa		( .
+	jr z,kbd_wait_key		;04b6	28 fa		( .
 	in a,(PORT_KBD_DATA)		;04b8	db 30		. 0
 	ld (kbd_last),a		;04ba	32 fd bf	2 . .
 	in a,(PORT_LUCY_DATA)		;04bd	db 70		. p
 	bit 1,a			;04bf	cb 4f		. O
-	jr z,l04a9h		;04c1	28 e6		( .
+	jr z,kbd_return_last		;04c1	28 e6		( .
 	xor a			;04c3	af		.
 	ld (kbd_state),a		;04c4	32 fc bf	2 . .
-	jr l04a9h		;04c7	18 e0		. .
+	jr kbd_return_last		;04c7	18 e0		. .
 get_char_echo:
 
 ; BLOCK 'char_io_video' (start 0x04c9 end 0x05fa)
@@ -933,7 +933,7 @@ putchar:
 	ld (vram_attr),a		;04de	32 fa bf	2 . .
 	call write_vram		;04e1	cd a5 05	. . .
 	call advance_cursor	;04e4	cd 06 05	. . .
-l04e7h:
+putchar_done:
 	call cursor_off		;04e7	cd dc 05	. . .
 	pop hl			;04ea	e1		.
 	pop de			;04eb	d1		.
@@ -943,7 +943,7 @@ handle_cr:
 	call cursor_on		;04ee	cd ec 05	. . .
 	call advance_row	;04f1	cd 1f 05	. . .
 	call reset_column	;04f4	cd f9 04	. . .
-	jr l04e7h		;04f7	18 ee		. .
+	jr putchar_done		;04f7	18 ee		. .
 reset_column:
 	xor a			;04f9	af		.
 	ld (cursor_col),a		;04fa	32 f8 bf	2 . .
@@ -951,19 +951,19 @@ reset_column:
 handle_lf:
 	call cursor_on		;04fe	cd ec 05	. . .
 	call advance_row	;0501	cd 1f 05	. . .
-	jr l04e7h		;0504	18 e1		. .
+	jr putchar_done		;0504	18 e1		. .
 advance_cursor:
 	ld a,(cursor_col)		;0506	3a f8 bf	: . .
 	cp COL_LAST			;0509	fe a7		. .
-	jr z,l0518h		;050b	28 0b		( .
+	jr z,col_overflow		;050b	28 0b		( .
 	bit 7,a			;050d	cb 7f		. .
-	jr z,l0512h		;050f	28 01		( .
+	jr z,toggle_half		;050f	28 01		( .
 	inc a			;0511	3c		<
-l0512h:
+toggle_half:
 	xor COL_HALF		;0512	ee 80		. .
 	ld (cursor_col),a		;0514	32 f8 bf	2 . .
 	ret			;0517	c9		.
-l0518h:
+col_overflow:
 	call reset_column	;0518	cd f9 04	. . .
 	call advance_row	;051b	cd 1f 05	. . .
 	ret			;051e	c9		.
@@ -982,9 +982,9 @@ scroll_screen:
 	inc a			;0535	3c		<
 	ld (scroll_off),a		;0536	32 fb bf	2 . .
 	cp SCREEN_ROWS		;0539	fe 19		. .
-	jr z,l0555h		;053b	28 18		( .
+	jr z,scroll_wrap		;053b	28 18		( .
 	out (PORT_SCROLL_ALT),a		;053d	d3 04		. .
-l053fh:
+clear_new_row:
 	xor a			;053f	af		.
 	ld (cursor_col),a		;0540	32 f8 bf	2 . .
 	ld a,' '		;0543	3e 20		>  
@@ -995,14 +995,14 @@ l053fh:
 	pop af			;0550	f1		.
 	ld (cursor_col),a		;0551	32 f8 bf	2 . .
 	ret			;0554	c9		.
-l0555h:
+scroll_wrap:
 	xor a			;0555	af		.
 	ld (scroll_off),a		;0556	32 fb bf	2 . .
 	out (PORT_SCROLL),a		;0559	d3 03		. .
-	jr l053fh		;055b	18 e2		. .
+	jr clear_new_row		;055b	18 e2		. .
 clear_screen:
 	xor a			;055d	af		.
-l055eh:
+clear_row_loop:
 	ld (cursor_row),a		;055e	32 f7 bf	2 . .
 	xor a			;0561	af		.
 	ld (cursor_col),a		;0562	32 f8 bf	2 . .
@@ -1014,7 +1014,7 @@ l055eh:
 	ld a,(cursor_row)		;0572	3a f7 bf	: . .
 	inc a			;0575	3c		<
 	cp SCREEN_ROWS		;0576	fe 19		. .
-	jr nz,l055eh		;0578	20 e4		  .
+	jr nz,clear_row_loop		;0578	20 e4		  .
 	xor a			;057a	af		.
 	ld (cursor_col),a		;057b	32 f8 bf	2 . .
 	out (PORT_SCROLL),a		;057e	d3 03		. .
@@ -1027,13 +1027,13 @@ fill_row_spaces:
 	inc a			;058d	3c		<
 	ld (cursor_col),a		;058e	32 f8 bf	2 . .
 	bit 7,a			;0591	cb 7f		. .
-	jr nz,l05a0h		;0593	20 0b		  .
+	jr nz,fill_check_done		;0593	20 0b		  .
 	cp COL_HALF_COUNT		;0595	fe 28		. (
 	jr nz,fill_row_spaces	;0597	20 ee		  .
 	ld a,COL_HALF		;0599	3e 80		> .
 	ld (cursor_col),a		;059b	32 f8 bf	2 . .
 	jr fill_row_spaces	;059e	18 e7		. .
-l05a0h:
+fill_check_done:
 	cp COL_WRAP			;05a0	fe a8		. .
 	jr nz,fill_row_spaces	;05a2	20 e3		  .
 	ret			;05a4	c9		.
@@ -1054,10 +1054,10 @@ write_vram:
 	set 5,(hl)		;05b8	cb ee		. .
 	ld a,LUCY_REG_SCAN		;05ba	3e 06		> .
 	out (PORT_LUCY_REG),a		;05bc	d3 60		. `
-l05beh:
+wait_video_sync:
 	in a,(PORT_LUCY_DATA)		;05be	db 70		. p
 	bit 0,a			;05c0	cb 47		. G
-	jr z,l05beh		;05c2	28 fa		( .
+	jr z,wait_video_sync		;05c2	28 fa		( .
 	ld a,(hl)		;05c4	7e		~
 	res 5,(hl)		;05c5	cb ae		. .
 	ld h,(hl)		;05c7	66		f
@@ -1107,7 +1107,7 @@ post_vram_write:
 	out (PORT_VIDEO_ROW),a		;0606	d3 00		. .
 	ld h,a			;0608	67		g
 	ld a,d			;0609	7a		z
-l060ah:
+post_vram_col_write:
 	rrca			;060a	0f		.
 	ld b,a			;060b	47		G
 	or VID_WRITE_STROBE		;060c	f6 40		. @
@@ -1125,7 +1125,7 @@ l060ah:
 	inc d			;061f	14		.
 	ld a,d			;0620	7a		z
 	cp SCREEN_COLS		;0621	fe 50		. P
-	jr nz,l060ah		;0623	20 e5		  .
+	jr nz,post_vram_col_write		;0623	20 e5		  .
 	ld a,h			;0625	7c		|
 	inc a			;0626	3c		<
 	cp SCREEN_ROWS		;0627	fe 19		. .
@@ -1137,14 +1137,14 @@ post_vram_verify:
 	out (PORT_VIDEO_ROW),a		;0630	d3 00		. .
 	ld h,a			;0632	67		g
 	ld a,d			;0633	7a		z
-l0634h:
+post_vram_col_verify:
 	rrca			;0634	0f		.
 	ld b,a			;0635	47		G
 	or VID_WRITE_STROBE		;0636	f6 40		. @
 	out (PORT_VIDEO_CHAR),a		;0638	d3 01		. .
 	in a,(PORT_VIDEO_ATTR)		;063a	db 02		. .
 	cp c			;063c	b9		.
-	jr nz,l0661h		;063d	20 22		  "
+	jr nz,post_vram_fail		;063d	20 22		  "
 	add a,TEST_PATTERN		;063f	c6 55		. U
 	ld c,a			;0641	4f		O
 	xor a			;0642	af		.
@@ -1153,7 +1153,7 @@ l0634h:
 	out (PORT_VIDEO_CHAR),a		;0646	d3 01		. .
 	in a,(PORT_VIDEO_ATTR)		;0648	db 02		. .
 	cp c			;064a	b9		.
-	jr nz,l0661h		;064b	20 14		  .
+	jr nz,post_vram_fail		;064b	20 14		  .
 	add a,TEST_PATTERN		;064d	c6 55		. U
 	ld c,a			;064f	4f		O
 	xor a			;0650	af		.
@@ -1161,64 +1161,64 @@ l0634h:
 	inc d			;0653	14		.
 	ld a,d			;0654	7a		z
 	cp SCREEN_COLS		;0655	fe 50		. P
-	jr nz,l0634h		;0657	20 db		  .
+	jr nz,post_vram_col_verify		;0657	20 db		  .
 	ld a,h			;0659	7c		|
 	inc a			;065a	3c		<
 	cp SCREEN_ROWS		;065b	fe 19		. .
 	jr nz,post_vram_verify	;065d	20 cf		  .
 	jr post_ram_test	;065f	18 04		. .
-l0661h:
+post_vram_fail:
 	ex af,af'		;0661	08		.
 	set 0,a			;0662	cb c7		. .
 	ex af,af'		;0664	08		.
 post_ram_test:
 	ld hl,08000h		;0665	21 00 80	! . .
 	ld de,08000h		;0668	11 00 80	. . .
-	jr l0671h		;066b	18 04		. .
-l066dh:
+	jr ram_test_write		;066b	18 04		. .
+ram_test_bank2:
 	ld a,SYS_RAM_TEST		;066d	3e 60		> `
 	out (PORT_SYS_CTRL),a		;066f	d3 20		.  
-l0671h:
+ram_test_write:
 	ld c,080h		;0671	0e 80		. .
 	ld a,000h		;0673	3e 00		> .
-l0675h:
+ram_write_page:
 	ld b,000h		;0675	06 00		. .
-l0677h:
+ram_write_byte:
 	ld (hl),a		;0677	77		w
 	inc hl			;0678	23		#
 	add a,TEST_PATTERN		;0679	c6 55		. U
-	djnz l0677h		;067b	10 fa		. .
+	djnz ram_write_byte		;067b	10 fa		. .
 	dec c			;067d	0d		.
-	jr nz,l0675h		;067e	20 f5		  .
+	jr nz,ram_write_page		;067e	20 f5		  .
 	ld hl,reset		;0680	21 00 00	! . .
 	add hl,de		;0683	19		.
 	ld c,080h		;0684	0e 80		. .
 	ld a,000h		;0686	3e 00		> .
-l0688h:
+ram_verify_page:
 	ld b,000h		;0688	06 00		. .
-l068ah:
+ram_verify_byte:
 	cp (hl)			;068a	be		.
-	jr nz,l069ah		;068b	20 0d		  .
+	jr nz,ram_verify_fail		;068b	20 0d		  .
 	inc hl			;068d	23		#
 	add a,TEST_PATTERN		;068e	c6 55		. U
-	djnz l068ah		;0690	10 f8		. .
+	djnz ram_verify_byte		;0690	10 f8		. .
 	dec c			;0692	0d		.
-	jr nz,l0688h		;0693	20 f3		  .
+	jr nz,ram_verify_page		;0693	20 f3		  .
 	ld hl,reset		;0695	21 00 00	! . .
-	jr l06a9h		;0698	18 0f		. .
-l069ah:
+	jr copy_ramtest_high		;0698	18 0f		. .
+ram_verify_fail:
 	ld a,h			;069a	7c		|
 	or l			;069b	b5		.
-	jr z,l06a2h		;069c	28 04		( .
+	jr z,ram_test_exit		;069c	28 04		( .
 	ex af,af'		;069e	08		.
 	set 1,a			;069f	cb cf		. .
 	ex af,af'		;06a1	08		.
-l06a2h:
+ram_test_exit:
 	ld a,SYS_ACTIVE		;06a2	3e 20		>  
 	out (PORT_SYS_CTRL),a		;06a4	d3 20		.  
 	jp post_fdc_test	;06a6	c3 c0 06	. . .
-l06a9h:
-	ld hl,l066dh		;06a9	21 6d 06	! m .
+copy_ramtest_high:
+	ld hl,ram_test_bank2		;06a9	21 6d 06	! m .
 	ld de,0866dh		;06ac	11 6d 86	. m .
 	ld bc,irq_handler_last	;06af	01 3c 00	. < .
 	ldir			;06b2	ed b0		. .
@@ -1230,7 +1230,7 @@ post_fdc_test:
 	ld a,FDC_CMD_FORCE_INT		;06c0	3e d0		> .
 	out (PORT_FDC_CMD),a		;06c2	d3 10		. .
 	xor a			;06c4	af		.
-l06c5h:
+fdc_test_write:
 	ld c,a			;06c5	4f		O
 	out (PORT_FDC_TRACK),a		;06c6	d3 11		. .
 	add a,TEST_PATTERN		;06c8	c6 55		. U
@@ -1238,29 +1238,29 @@ l06c5h:
 	add a,TEST_PATTERN		;06cc	c6 55		. U
 	out (PORT_FDC_DATA),a		;06ce	d3 13		. .
 	ld b,050h		;06d0	06 50		. P
-l06d2h:
-	djnz l06d2h		;06d2	10 fe		. .
+fdc_test_settle:
+	djnz fdc_test_settle		;06d2	10 fe		. .
 	in a,(PORT_FDC_TRACK)		;06d4	db 11		. .
 	cp c			;06d6	b9		.
-	jr nz,l06f4h		;06d7	20 1b		  .
+	jr nz,fdc_test_fail		;06d7	20 1b		  .
 	add a,TEST_PATTERN		;06d9	c6 55		. U
 	ld c,a			;06db	4f		O
 	in a,(PORT_FDC_SECTOR)		;06dc	db 12		. .
 	cp c			;06de	b9		.
-	jr nz,l06f4h		;06df	20 13		  .
+	jr nz,fdc_test_fail		;06df	20 13		  .
 	add a,TEST_PATTERN		;06e1	c6 55		. U
 	ld c,a			;06e3	4f		O
 	in a,(PORT_FDC_DATA)		;06e4	db 13		. .
 	cp c			;06e6	b9		.
-	jr nz,l06f4h		;06e7	20 0b		  .
+	jr nz,fdc_test_fail		;06e7	20 0b		  .
 	add a,TEST_PATTERN		;06e9	c6 55		. U
 	or a			;06eb	b7		.
 	jr z,post_serial_setup	;06ec	28 0e		( .
 	ld b,050h		;06ee	06 50		. P
-l06f0h:
-	djnz l06f0h		;06f0	10 fe		. .
-	jr l06c5h		;06f2	18 d1		. .
-l06f4h:
+fdc_test_delay:
+	djnz fdc_test_delay		;06f0	10 fe		. .
+	jr fdc_test_write		;06f2	18 d1		. .
+fdc_test_fail:
 	ex af,af'		;06f4	08		.
 	set 2,a			;06f5	cb d7		. .
 	ex af,af'		;06f7	08		.
@@ -1278,28 +1278,28 @@ post_serial_setup:
 	ld c,000h		;070c	0e 00		. .
 post_serial_test:
 	ld d,0ffh		;070e	16 ff		. .
-l0710h:
+wait_uart_txready:
 	dec d			;0710	15		.
-	jr z,l0730h		;0711	28 1d		( .
+	jr z,serial_test_fail		;0711	28 1d		( .
 	in a,(PORT_UART_STATUS)		;0713	db 51		. Q
 	and 001h		;0715	e6 01		. .
-	jr z,l0710h		;0717	28 f7		( .
+	jr z,wait_uart_txready		;0717	28 f7		( .
 	ld a,c			;0719	79		y
 	out (PORT_UART_DATA),a		;071a	d3 50		. P
 	xor a			;071c	af		.
-l071dh:
+uart_rx_delay:
 	dec ix			;071d	dd 2b		. +
 	dec a			;071f	3d		=
-	jr nz,l071dh		;0720	20 fb		  .
+	jr nz,uart_rx_delay		;0720	20 fb		  .
 	in a,(PORT_UART_DATA)		;0722	db 50		. P
 	cp c			;0724	b9		.
-	jr nz,l0730h		;0725	20 09		  .
+	jr nz,serial_test_fail		;0725	20 09		  .
 	add a,TEST_PATTERN		;0727	c6 55		. U
 	ld c,a			;0729	4f		O
 	or a			;072a	b7		.
 	jr nz,post_serial_test	;072b	20 e1		  .
 	jp post_timer_test	;072d	c3 34 07	. 4 .
-l0730h:
+serial_test_fail:
 	ex af,af'		;0730	08		.
 	set 3,a			;0731	cb df		. .
 	ex af,af'		;0733	08		.
@@ -1308,18 +1308,18 @@ post_timer_test:
 	ld d,000h		;0737	16 00		. .
 	im 1			;0739	ed 56		. V
 	ei			;073b	fb		.
-l073ch:
+timer_count_loop:
 	dec hl			;073c	2b		+
 	ld a,h			;073d	7c		|
 	or l			;073e	b5		.
-	jr nz,l073ch		;073f	20 fb		  .
+	jr nz,timer_count_loop		;073f	20 fb		  .
 	di			;0741	f3		.
 	ld a,d			;0742	7a		z
 	cp 023h			;0743	fe 23		. #
-	jr c,l074bh		;0745	38 04		8 .
+	jr c,timer_test_fail		;0745	38 04		8 .
 	cp 025h			;0747	fe 25		. %
 	jr c,post_complete	;0749	38 04		8 .
-l074bh:
+timer_test_fail:
 	ex af,af'		;074b	08		.
 	set 4,a			;074c	cb e7		. .
 	ex af,af'		;074e	08		.
@@ -1327,13 +1327,13 @@ post_complete:
 	di			;074f	f3		.
 	call init_display	;0750	cd 6e 00	. n .
 	ld hl,str_autotest	;0753	21 98 07	! . .
-l0756h:
+print_autotest_loop:
 	ld c,(hl)		;0756	4e		N
 	call putchar		;0757	cd cd 04	. . .
 	inc hl			;075a	23		#
 	ld a,(hl)		;075b	7e		~
 	or a			;075c	b7		.
-	jr nz,l0756h		;075d	20 f7		  .
+	jr nz,print_autotest_loop		;075d	20 f7		  .
 	ex af,af'		;075f	08		.
 	or a			;0760	b7		.
 	jr nz,post_show_errors	;0761	20 0d		  .
@@ -1346,19 +1346,19 @@ post_show_errors:
 	ld b,008h		;0770	06 08		. .
 	ld e,a			;0772	5f		_
 	ld d,'0'		;0773	16 30		. 0
-l0775h:
+post_error_loop:
 	srl e			;0775	cb 3b		. ;
-	jr c,l077fh		;0777	38 06		8 .
-l0779h:
+	jr c,post_print_error		;0777	38 06		8 .
+post_next_error:
 	inc d			;0779	14		.
-	djnz l0775h		;077a	10 f9		. .
+	djnz post_error_loop		;077a	10 f9		. .
 	jp monitor_prompt	;077c	c3 93 00	. . .
-l077fh:
+post_print_error:
 	ld c,CR			;077f	0e 0d		. .
 	call putchar		;0781	cd cd 04	. . .
 	ld c,d			;0784	4a		J
 	call putchar		;0785	cd cd 04	. . .
-	jr l0779h		;0788	18 ef		. .
+	jr post_next_error		;0788	18 ef		. .
 str_prompt:
 
 ; BLOCK 'str_prompt' (start 0x078a end 0x0798)
