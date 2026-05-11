@@ -497,6 +497,16 @@ diff <(xxd ORIGINAL.BIN) <(xxd /tmp/roundtrip.bin)
 - `detectIndentation: false` + `tabSize: 8` in VS Code settings for proper column alignment
 - The `equ` definitions must appear before first use (put them after `org` but before code)
 
+## Comment Formatting
+
+Use `format_asm.py` (in this skill's directory) to align all inline `;` comments to a consistent column:
+
+```sh
+python3 .copilot/skills/z80-rom-reverse-engineering/format_asm.py input.asm output.asm
+```
+
+Edit `COMMENT_COL` (default 40) and `TAB` (default 4) at the top of the script to match your preferences. Always round-trip verify after formatting.
+
 ## Tips
 
 - Z80 is little-endian: `ld sp,0bee8h` stores as `31 e8 be`
