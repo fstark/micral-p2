@@ -17,7 +17,7 @@ This is the bootstrap ROM for the Bull/R2E Micral P2 microcomputer. On power-up 
 3. Displays "AUTO-TEST : OK" or error codes
 4. Enters a simple monitor with commands for booting from floppy, memory inspection, and I/O port access
 
-The ROM communicates with user through a built-in video terminal driver (character-mapped display) and a keyboard interface.
+The ROM communicates with user through a built-in video terminal driver (SAA5120/SAA5150 character-mapped display) and a KR3600 keyboard encoder mediated by the SAA5070 LUCY multi-function controller.
 
 ---
 
@@ -75,24 +75,24 @@ The ROM communicates with user through a built-in video terminal driver (charact
 
 | Port | Direction | Peripheral | Function |
 |------|-----------|------------|----------|
-| 0x00 | OUT | Video controller | Row address |
-| 0x01 | OUT | Video controller | Character data (bit 6 = write strobe) |
-| 0x02 | IN/OUT | Video controller | Attribute data (read-back for test) |
-| 0x03 | OUT | Video controller | Scroll register (line offset) |
-| 0x04 | OUT | Video controller | Scroll register (alternate) |
+| 0x00 | OUT | SAA5120/SAA5150 video | Row address |
+| 0x01 | OUT | SAA5120/SAA5150 video | Character data (bit 6 = write strobe) |
+| 0x02 | IN/OUT | SAA5120/SAA5150 video | Attribute data (read-back for test) |
+| 0x03 | OUT | SAA5120/SAA5150 video | Scroll register (line offset) |
+| 0x04 | OUT | SAA5120/SAA5150 video | Scroll register (alternate) |
 | 0x07 | OUT | Timer/CTC | Timer reload (in IRQ handler) |
-| 0x10 | IN/OUT | FDC (WD1793/FD1793) | Command (W) / Status (R) |
-| 0x11 | IN/OUT | FDC | Track register |
-| 0x12 | IN/OUT | FDC | Sector register |
-| 0x13 | IN/OUT | FDC | Data register |
+| 0x10 | IN/OUT | FD1797 FDC | Command (W) / Status (R) |
+| 0x11 | IN/OUT | FD1797 FDC | Track register |
+| 0x12 | IN/OUT | FD1797 FDC | Sector register |
+| 0x13 | IN/OUT | FD1797 FDC | Data register |
 | 0x20 | OUT | System control | LED/drive select/bank flags |
-| 0x30 | IN | Keyboard | Data register (7-bit ASCII) |
-| 0x50 | IN/OUT | SIO (Serial) | Data register |
-| 0x51 | IN | SIO | Status register |
-| 0x52 | OUT | SIO | Control register (mode/command) |
-| 0x53 | OUT | SIO | Sync character / baud config |
-| 0x60 | OUT | Keyboard controller (8255 PPI) | Control/command register |
-| 0x70 | IN/OUT | Keyboard controller (8255 PPI) | Status (R) / Data (W) |
+| 0x30 | IN | KR3600 keyboard encoder | Parallel data output (7-bit ASCII) |
+| 0x50 | IN/OUT | 2661 UART | Data register |
+| 0x51 | IN | 2661 UART | Status register |
+| 0x52 | OUT | 2661 UART | Mode register |
+| 0x53 | OUT | 2661 UART | Command register |
+| 0x60 | OUT | SAA5070 (LUCY) | Register select |
+| 0x70 | IN/OUT | SAA5070 (LUCY) | Register data (R/W) |
 
 ---
 
@@ -116,12 +116,12 @@ The ROM communicates with user through a built-in video terminal driver (charact
 
 1. **Reset (0x0000):** Set SP to 0xBEE8
 2. **Keyboard init:** Write 0x22 to port 0x20 (enable keyboard), short delay, then clear
-3. **PPI 8255 init:** Program keyboard controller via ports 0x60/0x70 — set data direction, write 0xFF to registers 6 and 7
+3. **SAA5070 init:** Program LUCY chip via ports 0x60/0x70 — configure registers, write 0xFF to registers 6 and 7 (keyboard scan enable)
 4. **Jump to POST (0x05FA)**
 5. **POST — Video RAM test:** Write/verify pattern to character-mapped display (25 rows × 80 cols)
 6. **POST — Main RAM test:** Write/verify 32KB at 0x8000, relocates test code to high RAM to test lower region
 7. **POST — FDC test:** Verify FDC registers (track, sector, data) hold written values
-8. **POST — Serial test:** Initialize SIO (sync mode, 0x4E/0x3E/0xA7), loopback test with incrementing pattern
+8. **POST — Serial test:** Initialize 2661 UART (mode 0x4E/0x3E, command 0xA7), loopback test with incrementing pattern
 9. **POST — Timer test:** Enable IM1, run counter for calibration period, verify expected tick count (0x23–0x25)
 10. **POST complete (0x074F):** Initialize display, print `"\r\n AUTO-TEST : "`, then "OK" or error bit codes
 
@@ -193,30 +193,34 @@ This maps out the ROM and maps in full RAM, then executes the loaded operating s
 
 ---
 
-## Video Display
+## Video Display (SAA5120 + SAA5150)
 
-- **25 rows × 80 columns** (standard for the era)
+- **SAA5150** video timing/display processor + **SAA5120** character generator
+- **25 rows × 80 columns** character-mapped display
 - Character + attribute stored via ports 0x00 (row), 0x01 (char), 0x02 (attr)
 - Port 0x01 bit 6 distinguishes write strobe (set) from normal output
 - Port 0x03/0x04: hardware scroll register
 - Cursor implemented by toggling attribute bit (XOR 0xC0)
 - Software scroll: rewrites entire screen row by row
+- SAA5070 register 6 polled (port 0x70 bit 0) for display blanking sync before VRAM write
 
 ---
 
-## Keyboard
+## Keyboard (KR3600 + SAA5070)
 
-- **8255 PPI** at ports 0x60 (control) and 0x70 (data/status)
-- Port 0x70 bit 0: key pressed flag
-- Port 0x70 bit 1: key released flag  
-- Port 0x30: ASCII data register (7-bit, masked with 0x7F)
+- **KR3600** keyboard matrix encoder provides parallel ASCII output at port 0x30
+- **SAA5070 (LUCY)** mediates keyboard status via register 7 (port 0x60=select, 0x70=data)
+- SAA5070 reg 7, bit 0: key pressed flag
+- SAA5070 reg 7, bit 1: key released flag  
+- Port 0x30: KR3600 data output (7-bit, masked with 0x7F)
 - Includes auto-repeat logic with debounce delay (0x0A00 loop iterations)
+- KR3600 has a separate mapping ROM for scan-code to ASCII conversion
 
 ---
 
 ## FDC (Floppy Disk Controller)
 
-- **WD1793-compatible** at ports 0x10–0x13
+- **FD1797** (WD179x family, active-high data bus variant) at ports 0x10–0x13
 - Commands used:
   - 0xD0: Force interrupt (abort/reset)
   - 0x0F: Restore (seek track 0)
