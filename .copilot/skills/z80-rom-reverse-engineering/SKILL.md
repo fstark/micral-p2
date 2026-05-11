@@ -335,6 +335,119 @@ z80asm -o /tmp/roundtrip.bin annotated.asm
 cmp ORIGINAL.BIN /tmp/roundtrip.bin
 ```
 
+### Phase 10: Inline Comments and Function Headers
+
+After all symbols, constants, and labels are meaningful, the assembly is structurally clean but still requires narrative comments to explain *why* the code does what it does. This phase adds function-level documentation and inline comments describing logic flow.
+
+#### Step 1: Identify function boundaries
+
+Every `call` target and every entry point (reset, IRQ, NMI, named subroutines) is a function. List them:
+
+```sh
+grep -nE '^[a-z_]+:' annotated.asm | head -60
+```
+
+Group related functions by subsystem (video driver, keyboard driver, FDC routines, POST tests, monitor commands, etc.).
+
+#### Step 2: Add function header comments
+
+Before each function label, insert a header block explaining:
+- **Purpose** — one-line summary of what the function does
+- **Inputs** — registers, memory locations, or ports read
+- **Outputs** — registers modified, memory written, side effects
+- **Clobbers** — registers destroyed (if non-obvious)
+- **Context** — when/why this function is called
+
+Use a consistent format:
+
+```z80
+; ============================================================
+; putchar — Write one character to the display
+; Input:  C = character to print
+; Output: cursor position updated
+; Clobbers: A, B, HL
+; Called by monitor, boot loader, POST display routines
+; ============================================================
+putchar:
+```
+
+For short utility functions (< 10 instructions), a 1–2 line comment suffices:
+
+```z80
+; Print CRLF sequence to display
+print_crlf:
+```
+
+#### Step 3: Add inline comments explaining logic flow
+
+Walk through each function and add comments that explain:
+- **What each block of instructions accomplishes** (not what each opcode does)
+- **Why** a particular approach is used (e.g. "relocate test code to high RAM so we can test the low bank")
+- **Hardware interactions** — what a port read/write triggers in the real hardware
+- **Loop invariants** — what registers hold at loop entry, exit conditions
+- **Magic values** — why a specific constant is compared or loaded
+
+**Good inline comments:**
+
+```z80
+; Wait for FDC to finish (bit 0 = busy)
+wait_fdc_idle:
+	in a,(PORT_FDC_STATUS)
+	rrca			; shift busy bit into carry
+	jr c,wait_fdc_idle
+; Verify pattern by reading back each byte
+	ld c,080h		; 128 pages = 32KB
+```
+
+**Bad inline comments** (just restating the opcode):
+
+```z80
+	ld a,020h		; load 0x20 into A     ← useless
+	out (020h),a		; output A to port 20  ← useless
+```
+
+#### Step 4: Verify exact whitespace before editing
+
+z80dasm output uses tab-aligned columns. Before submitting any replacement, verify the exact tab structure:
+
+```sh
+cat -vet annotated.asm | sed -n '<START>,<END>p'
+```
+
+Tabs appear as `^I`. Match them exactly — a wrong tab count will cause the replacement to fail silently or corrupt alignment. Key patterns:
+- Short instructions (e.g. `xor a`) get more tabs to align the semicolon comment
+- Long instructions (e.g. `out (PORT_SYS_CTRL),a`) get fewer tabs
+- The comment column format is: `;addr\thex_bytes\tascii_repr`
+
+#### Step 5: Work in batches by subsystem
+
+Process the file in logical batches (8–15 functions per batch) to keep replacements manageable:
+
+1. Reset vectors, IRQ/NMI handlers, system init
+2. Boot loader, record parser
+3. Disk I/O (FDC driver routines)
+4. Monitor command dispatcher and commands
+5. Hex I/O utilities, keyboard driver
+6. Character I/O, video driver
+7. POST / self-test routines
+8. Data tables and strings
+
+After each batch, verify the file still assembles to an identical binary:
+
+```sh
+z80asm -o /tmp/roundtrip.bin annotated.asm
+cmp ORIGINAL.BIN /tmp/roundtrip.bin
+```
+
+#### Step 6: ASCII column awareness
+
+The z80dasm hex dump comment includes an ASCII representation column where printable bytes (0x20–0x7E) are shown as their character, not as `.`. For example:
+- `0x79` → `y`, not `.`
+- `0x23` → `#`, not `.`
+- `0x4f` → `O`, not `.`
+
+Always copy the ASCII column exactly from the existing file — never assume non-printable.
+
 ## Iterative Refinement
 
 Reverse engineering is iterative. After each pass:
