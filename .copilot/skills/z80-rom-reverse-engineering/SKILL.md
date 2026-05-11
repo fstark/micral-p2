@@ -146,6 +146,60 @@ Produce a markdown analysis document containing:
 6. **Boot Sequence** — Step-by-step walkthrough of initialization code
 7. **Annotated Assembly** — Key sections with explanatory comments
 
+### Phase 7: RAM Variable Symbolification
+
+After the annotated disassembly is complete, scan for raw memory addresses used as variables and replace them with named EQU definitions.
+
+#### Step 1: Find all direct address references
+
+```sh
+grep -oE '0[0-9a-f]{3,4}h' annotated.asm | sort | uniq -c | sort -rn
+```
+
+Focus on addresses in the RAM region (not ROM code addresses). These are typically used with `ld (addr),a`, `ld a,(addr)`, `ld hl,addr` followed by `(hl)` operations, and `ld (addr),hl`.
+
+#### Step 2: Infer purpose from usage context
+
+For each RAM address, grep its occurrences and study the surrounding code to determine:
+- What values are written to it (constants, computed values, I/O reads)
+- What reads from it and how the value is used
+- Whether it's a byte, word, or pointer
+- Its role in the system (video state, keyboard buffer, FDC parameters, etc.)
+
+#### Step 3: Add EQU definitions
+
+Insert a block of `equ` definitions after the `org` directive but before the first code label. Include a short comment documenting each variable's purpose:
+
+```z80
+; --- RAM variables ---
+cursor_row:	equ	0bff7h		; Display cursor row position (0..24)
+cursor_col:	equ	0bff8h		; Display cursor column position
+kbd_state:	equ	0bffch		; Keyboard debounce state flag
+```
+
+#### Step 4: Replace raw addresses in code
+
+Use sed to bulk-replace all occurrences of each raw address with its symbolic name:
+
+```sh
+sed -i '' \
+  -e 's/0bff7h/cursor_row/g' \
+  -e 's/0bff8h/cursor_col/g' \
+  -e 's/0bffch/kbd_state/g' \
+  annotated.asm
+```
+
+**Order matters:** Replace longer/more-specific addresses first to avoid partial matches (e.g. replace `0beebh` before `0bee9h`).
+
+#### Step 5: Round-trip verify
+
+Always reassemble and diff after bulk replacements to confirm nothing was corrupted:
+
+```sh
+z80asm -o /tmp/roundtrip.bin annotated.asm
+diff <(xxd ORIGINAL.BIN) <(xxd /tmp/roundtrip.bin)
+```
+
 ## Iterative Refinement
 
 Reverse engineering is iterative. After each pass:
