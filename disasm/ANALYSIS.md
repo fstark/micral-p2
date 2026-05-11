@@ -243,3 +243,112 @@ This maps out the ROM and maps in full RAM, then executes the loaded operating s
 | `disasm/boot_annotated.asm` | Annotated disassembly with meaningful labels |
 | `disasm/symbols.sym` | Symbol file for z80dasm |
 | `disasm/blocks.def` | Block definition file (code vs data regions) |
+
+---
+
+## System Architecture (inferred from ROM analysis)
+
+```
+                          ┌──────────────────────────────┐
+                          │         Z80 CPU (4 MHz)      │
+                          │                              │
+                          │  A0-A15  D0-D7  NMI  INT    │
+                          └──┬────────┬───────┬────┬────┘
+                             │        │       │    │
+        ─────────────────────┼────────┼───────┼────┼──────────────
+                  System Bus │  Data  │       │    │
+                             │        │       │    │
+    ┌────────────────────────┴────────┴───────┴────┴──────────────┐
+    │                   Address Decoder (active-low CS)           │
+    │  A4-A6 select chip   A0-A3 select register                 │
+    │  Active I/O ranges: 00-07, 10-13, 20, 30, 50-53, 60, 70   │
+    └──┬──────┬───────┬───────┬────────┬────────┬───────┬────────┘
+       │      │       │       │        │        │       │
+       │      │       │       │        │        │       │
+  ┌────┴───┐  │  ┌────┴────┐  │   ┌────┴────┐   │  ┌───┴─────┐
+  │SAA5120 │  │  │ FD1797  │  │   │  2661   │   │  │ SAA5070 │
+  │SAA5150 │  │  │  FDC    │  │   │  UART   │   │  │ (LUCY)  │
+  │ Video  │  │  │         │  │   │         │   │  │         │
+  │        │  │  │ P 10-13 │  │   │ P 50-53 │   │  │ P 60,70 │
+  └───┬────┘  │  └────┬────┘  │   └─────────┘   │  └──┬──┬───┘
+      │       │       │       │                  │     │  │
+  P 00-04     │    NMI ───────┘             P 30 │     │  │
+  25×80 char  │    (DRQ)              ┌──────────┘     │  │
+  display     │                       │                │  │
+              │                  ┌────┴────┐     ┌─────┴──┘
+         ┌────┴────┐             │ KR3600  │     │ CTC Timer
+         │ System  │             │Keyboard │     │ P 07
+         │ Control │             │ Encoder │     │    │
+         │ P 20    │             │(+map ROM│     │  INT ──→ RST 38h
+         │         │             │ CLAVIER)│     │  (IM1)
+         └────┬────┘             └─────────┘     └─────────
+              │
+     ┌────────┼────────┐
+     │        │        │
+  Drive    Motor    Bank
+  Select   Enable   Switch
+  bit2/3   bit4     bit6
+```
+
+### Memory Map
+
+```
+  Bank Switch OFF (reset default)       Bank Switch ON (bit 6 set)
+  ┌────────────────────┐                ┌────────────────────┐
+  │ 0x0000             │                │ 0x0000             │
+  │   Boot ROM (2 KB)  │                │   RAM (banked)     │
+  │ 0x07FF             │                │                    │
+  ├────────────────────┤                │                    │
+  │ 0x0800             │                │                    │
+  │   (unmapped/echo?) │                │                    │
+  │                    │                │                    │
+  ├────────────────────┤                ├────────────────────┤
+  │ 0x8000             │                │ 0x8000             │
+  │   RAM (32 KB)      │                │   RAM (32 KB)      │
+  │                    │                │                    │
+  │                    │                │                    │
+  ├────────────────────┤                ├────────────────────┤
+  │ 0xBEE8  Stack/Vars │                │                    │
+  │ 0xBEE9  Sector Buf │                │                    │
+  │ 0xBFF3  Sys Flags  │                │                    │
+  │ 0xBFF7  Video Vars │                │                    │
+  │ 0xBFFD  Kbd Vars   │                │                    │
+  ├────────────────────┤                ├────────────────────┤
+  │ 0xFFFD  Bank2 Ctrl │                │ 0xFFFD  Bank2 Ctrl │
+  │ 0xFFFF  Bank Latch │                │ 0xFFFF  Bank Latch │
+  └────────────────────┘                └────────────────────┘
+```
+
+### Interrupt Wiring
+
+```
+  FD1797 DRQ ──────→ Z80 NMI (0x0066)     Byte-by-byte FDC data transfer
+  CTC Timer ───────→ Z80 INT / IM1 (0x0038)  Tick counter for POST calibration
+```
+
+### Port 0x20 (System Control) Bit Map
+
+```
+  Bit 7:  Double-density select (SD/DD floppy)
+  Bit 6:  Bank switch (0=ROM visible, 1=RAM replaces ROM)
+  Bit 5:  Video sync pending (software flag)
+  Bit 4:  Floppy motor enable
+  Bit 3:  Drive 1 select
+  Bit 2:  Drive 0 select
+  Bit 1:  Keyboard enable (active during init pulse)
+  Bit 0:  (active / LED)
+```
+
+### Address Decoding (inferred from I/O port usage)
+
+```
+  A6  A5  A4 │ Chip Selected        │ Port Range
+  ────────────┼──────────────────────┼───────────
+   0   0   0 │ SAA5120/5150 (video) │ 0x00–0x07
+   0   0   1 │ FD1797 (FDC)         │ 0x10–0x13
+   0   1   0 │ System control latch │ 0x20
+   0   1   1 │ KR3600 (keyboard)    │ 0x30
+   1   0   1 │ 2661 (UART)          │ 0x50–0x53
+   1   1   0 │ SAA5070 reg select   │ 0x60
+   1   1   1 │ SAA5070 reg data     │ 0x70
+```

@@ -953,6 +953,13 @@ nibble_to_ascii:
 	adc a,040h
 	daa
 	ret
+; ============================================================
+; negate_add_hl_de — ORPHAN (unreferenced dead code)
+; Computes HL = DE - HL (two's complement negate HL, add DE).
+; Likely a utility left over from development; never called
+; by any code path in this ROM.
+; ============================================================
+negate_add_hl_de:
 	ld a,l
 	cpl
 	ld l,a
@@ -962,6 +969,13 @@ nibble_to_ascii:
 	inc hl
 	add hl,de
 	ret
+; ============================================================
+; sub_l_a — ORPHAN (unreferenced dead code)
+; Computes L = L - A (with borrow into H).
+; Another unused utility; no call or jump targets this
+; address anywhere in the ROM.
+; ============================================================
+sub_l_a:
 	push bc
 	ld b,a
 	ld a,l
@@ -971,7 +985,11 @@ nibble_to_ascii:
 	ret nc
 	dec h
 	ret
-		; compare_hl_de — Compare HL with DE (sets Z if equal)
+
+; ============================================================
+; compare_hl_de — Compare HL with DE
+; Returns: Z flag set if HL == DE, NZ if different.
+; ============================================================
 compare_hl_de:
 	ld a,h
 	cp d
@@ -979,7 +997,10 @@ compare_hl_de:
 	ld a,l
 	cp e
 	ret
-		; print_crlf — Output carriage return + line feed
+
+; ============================================================
+; print_crlf — Output carriage return + line feed
+; ============================================================
 print_crlf:
 	ld c,CR
 	jr putchar
@@ -1004,7 +1025,10 @@ print_hex_byte:
 	call putchar                        ; print high digit first
 	ld c,h
 	jr putchar                          ; then low digit
-		; print_address — Print CRLF, then DE as 4 hex digits + space
+
+; ============================================================
+; print_address — Print CRLF, then DE as 4 hex digits + space
+; ============================================================
 print_address:
 	call print_crlf
 	ld a,d
@@ -1087,8 +1111,11 @@ kbd_wait_key:
 	xor a
 	ld (kbd_state),a                    ; back to idle
 	jr kbd_return_cached
-		; get_char_echo — Read key and echo to display
-		; Calls get_kbd_char, then falls through to putchar.
+
+; ============================================================
+; get_char_echo — Read key and echo to display
+; Calls get_kbd_char, then falls through to putchar.
+; ============================================================
 get_char_echo:
 	call get_kbd_char
 	ld c,a                              ; C = key for putchar
@@ -1310,8 +1337,11 @@ wait_video_sync:
 	ld a,h
 	out (PORT_SYS_CTRL),a
 	ret
-		; cursor_on — Show cursor block (inverted attribute)
-		; Writes space with XOR'd attribute to create visible cursor.
+
+; ============================================================
+; cursor_on — Show cursor block (inverted attribute)
+; Writes space with XOR'd attribute to create visible cursor.
+; ============================================================
 cursor_on:
 	ld a,' '
 	ld (vram_char),a
@@ -1320,8 +1350,11 @@ cursor_on:
 	ld (vram_attr),a
 	call write_vram
 	ret
-		; cursor_off — Remove cursor block (restore normal attribute)
-		; Writes space with normal attribute to erase cursor.
+
+; ============================================================
+; cursor_off — Remove cursor block (restore normal attribute)
+; Writes space with normal attribute to erase cursor.
+; ============================================================
 cursor_off:
 	ld a,' '
 	ld (vram_char),a
