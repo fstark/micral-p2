@@ -66,8 +66,7 @@ The ROM communicates with user through a built-in video terminal driver (SAA5120
 | 0xBFFB  | Video: scroll line counter |
 | 0xBFFC  | Keyboard: key state flag |
 | 0xBFFD  | Keyboard: last character read |
-| 0xFFFC  | Bank switch control (written during exec) |
-| 0xFFFF  | Bank switch register |
+| 0xFFFF  | Bank switch latch register |
 
 ---
 

@@ -3,11 +3,33 @@
 
 	org 00000h
 
+; --- RAM variables (0xBEE8..0xBFFD) ---
+stack_top:	equ	0bee8h		; Top of stack; also stores boot drive number
+sector_buf:	equ	0bee9h		; 256-byte FDC sector read buffer
+boot_cfg:	equ	0beebh		; Boot config byte (sector_buf+2): bit7=bank1, bit6=bank2
+buf_rd_ptr:	equ	0bfe9h		; Current read pointer into sector buffer
+buf_remain:	equ	0bfebh		; Bytes remaining in current sector (word)
+disk_lba:	equ	0bfedh		; Logical sector counter for sequential reads (word)
+fdc_sector:	equ	0bfefh		; Physical sector number, 1-based (for FD1797)
+fdc_track:	equ	0bff0h		; Current track number
+disk_geom:	equ	0bff1h		; Disk geometry: sectors/track, heads (word)
+sys_flags:	equ	0bff3h		; System flags / port 0x20 shadow (bank select, video sync)
+fdc_side:	equ	0bff4h		; FDC side select: 0x00=side 0, 0x02=side 1
+floppy_prm_ptr:	equ	0bff5h		; Pointer to floppy parameters table (word)
+cursor_row:	equ	0bff7h		; Display cursor row position (0..24)
+cursor_col:	equ	0bff8h		; Display cursor column position (bit7=half-select)
+vram_char:	equ	0bff9h		; Character code for VRAM write (SAA5120)
+vram_attr:	equ	0bffah		; Character attribute for VRAM write (SAA5120)
+scroll_off:	equ	0bffbh		; Scroll offset: first visible row (wraps at 25)
+kbd_state:	equ	0bffch		; Keyboard debounce state (0=first press, 1=repeat)
+kbd_last:	equ	0bffdh		; Last key code read from KR3600
+bank_latch:	equ	0ffffh		; Bank switch latch register
+
 reset:
 
 ; BLOCK 'reset_init' (start 0x0000 end 0x0033)
 reset_init_start:
-	ld sp,0bee8h		;0000	31 e8 be	1 . .
+	ld sp,stack_top		;0000	31 e8 be	1 . .
 	ld a,022h		;0003	3e 22		> "
 	out (020h),a		;0005	d3 20		.  
 	ld b,030h		;0007	06 30		. 0
@@ -112,17 +134,17 @@ init_display:
 ; BLOCK 'init_display' (start 0x006e end 0x0093)
 init_display_start:
 	ld a,019h		;006e	3e 19		> .
-	ld (0bff7h),a		;0070	32 f7 bf	2 . .
+	ld (cursor_row),a		;0070	32 f7 bf	2 . .
 	xor a			;0073	af		.
-	ld (0bff3h),a		;0074	32 f3 bf	2 . .
-	ld (0bff8h),a		;0077	32 f8 bf	2 . .
+	ld (sys_flags),a		;0074	32 f3 bf	2 . .
+	ld (cursor_col),a		;0077	32 f8 bf	2 . .
 	ld a,001h		;007a	3e 01		> .
-	ld (0bffah),a		;007c	32 fa bf	2 . .
+	ld (vram_attr),a		;007c	32 fa bf	2 . .
 	ld a,02eh		;007f	3e 2e		> .
-	ld (0bff9h),a		;0081	32 f9 bf	2 . .
+	ld (vram_char),a		;0081	32 f9 bf	2 . .
 	call write_vram		;0084	cd a5 05	. . .
 	ld a,080h		;0087	3e 80		> .
-	ld (0bff8h),a		;0089	32 f8 bf	2 . .
+	ld (cursor_col),a		;0089	32 f8 bf	2 . .
 	call write_vram		;008c	cd a5 05	. . .
 	call clear_screen	;008f	cd 5d 05	. ] .
 init_display_last:
@@ -131,9 +153,9 @@ monitor_prompt:
 
 ; BLOCK 'monitor' (start 0x0093 end 0x00f6)
 monitor_start:
-	ld sp,0bee8h		;0093	31 e8 be	1 . .
+	ld sp,stack_top		;0093	31 e8 be	1 . .
 	xor a			;0096	af		.
-	ld (0bff3h),a		;0097	32 f3 bf	2 . .
+	ld (sys_flags),a		;0097	32 f3 bf	2 . .
 	ld hl,str_prompt	;009a	21 8a 07	! . .
 l009dh:
 	ld c,(hl)		;009d	4e		N
@@ -190,11 +212,11 @@ boot_floppy:
 ; BLOCK 'boot_loader' (start 0x00f6 end 0x01bd)
 boot_loader_start:
 	di			;00f6	f3		.
-	ld (0bfedh),de		;00f7	ed 53 ed bf	. S . .
+	ld (disk_lba),de		;00f7	ed 53 ed bf	. S . .
 	ex af,af'		;00fb	08		.
-	ld (0bee8h),a		;00fc	32 e8 be	2 . .
+	ld (stack_top),a		;00fc	32 e8 be	2 . .
 setup_fdc_flags:
-	ld hl,0bff3h		;00ff	21 f3 bf	! . .
+	ld hl,sys_flags		;00ff	21 f3 bf	! . .
 	dec b			;0102	05		.
 	jr z,l0109h		;0103	28 04		( .
 	set 2,(hl)		;0105	cb d6		. .
@@ -206,7 +228,7 @@ l010bh:
 	ld a,(hl)		;010d	7e		~
 	out (020h),a		;010e	d3 20		.  
 	ld hl,floppy_params	;0110	21 a8 07	! . .
-	ld (0bff5h),hl		;0113	22 f5 bf	" . .
+	ld (floppy_prm_ptr),hl		;0113	22 f5 bf	" . .
 wait_drive_ready:
 	in a,(010h)		;0116	db 10		. .
 	bit 7,a			;0118	cb 7f		. .
@@ -221,21 +243,21 @@ l011fh:
 	jr nz,l011fh		;0124	20 f9		  .
 read_boot_sector:
 	call fdc_restore	;0126	cd 51 02	. Q .
-	ld hl,(0bff5h)		;0129	2a f5 bf	* . .
+	ld hl,(floppy_prm_ptr)		;0129	2a f5 bf	* . .
 	ld a,(hl)		;012c	7e		~
 	rlca			;012d	07		.
 	inc hl			;012e	23		#
 	ld l,(hl)		;012f	6e		n
 	ld h,a			;0130	67		g
-	ld (0bff1h),hl		;0131	22 f1 bf	" . .
+	ld (disk_geom),hl		;0131	22 f1 bf	" . .
 	ld a,000h		;0134	3e 00		> .
-	ld (0bff4h),a		;0136	32 f4 bf	2 . .
+	ld (fdc_side),a		;0136	32 f4 bf	2 . .
 	inc a			;0139	3c		<
-	ld (0bfefh),a		;013a	32 ef bf	2 . .
+	ld (fdc_sector),a		;013a	32 ef bf	2 . .
 	call fdc_read_sector	;013d	cd d2 02	. . .
 	dec a			;0140	3d		=
 	jr nz,read_boot_sector	;0141	20 e3		  .
-	ld a,(0beebh)		;0143	3a eb be	: . .
+	ld a,(boot_cfg)		;0143	3a eb be	: . .
 	ld hl,0fffdh		;0146	21 fd ff	! . .
 	ld (hl),000h		;0149	36 00		6 .
 	bit 7,a			;014b	cb 7f		. .
@@ -247,7 +269,7 @@ l0151h:
 	set 2,(hl)		;0155	cb d6		. .
 l0157h:
 	ld hl,reset		;0157	21 00 00	! . .
-	ld (0bfebh),hl		;015a	22 eb bf	" . .
+	ld (buf_remain),hl		;015a	22 eb bf	" . .
 parse_record:
 	call get_next_byte	;015d	cd bd 01	. . .
 	and a			;0160	a7		.
@@ -288,16 +310,16 @@ exec_loaded_code:
 	push hl			;019e	e5		.
 	push de			;019f	d5		.
 	ld hl,trampoline	;01a0	21 b0 01	! . .
-	ld de,0bee9h		;01a3	11 e9 be	. . .
+	ld de,sector_buf		;01a3	11 e9 be	. . .
 	ld bc,0000dh		;01a6	01 0d 00	. . .
 	ldir			;01a9	ed b0		. .
 	pop de			;01ab	d1		.
 	pop hl			;01ac	e1		.
-	jp 0bee9h		;01ad	c3 e9 be	. . .
+	jp sector_buf		;01ad	c3 e9 be	. . .
 trampoline:
-	ld a,(0bff3h)		;01b0	3a f3 bf	: . .
+	ld a,(sys_flags)		;01b0	3a f3 bf	: . .
 	or 040h			;01b3	f6 40		. @
-	ld (0ffffh),a		;01b5	32 ff ff	2 . .
+	ld (bank_latch),a		;01b5	32 ff ff	2 . .
 	ld a,040h		;01b8	3e 40		> @
 	out (020h),a		;01ba	d3 20		.  
 boot_loader_last:
@@ -314,33 +336,33 @@ fdc_io_start:
 	jr parse_record		;01c3	18 98		. .
 l01c5h:
 	push hl			;01c5	e5		.
-	ld hl,(0bfebh)		;01c6	2a eb bf	* . .
+	ld hl,(buf_remain)		;01c6	2a eb bf	* . .
 	ld a,h			;01c9	7c		|
 	or l			;01ca	b5		.
 	jr nz,l01ebh		;01cb	20 1e		  .
 	push hl			;01cd	e5		.
 	push de			;01ce	d5		.
 	push bc			;01cf	c5		.
-	ld hl,(0bff1h)		;01d0	2a f1 bf	* . .
+	ld hl,(disk_geom)		;01d0	2a f1 bf	* . .
 	ex de,hl		;01d3	eb		.
-	ld hl,(0bfedh)		;01d4	2a ed bf	* . .
+	ld hl,(disk_lba)		;01d4	2a ed bf	* . .
 	call read_next_sector	;01d7	cd fa 01	. . .
-	ld (0bfedh),hl		;01da	22 ed bf	" . .
+	ld (disk_lba),hl		;01da	22 ed bf	" . .
 	pop bc			;01dd	c1		.
 	pop de			;01de	d1		.
 	pop hl			;01df	e1		.
 	ld hl,setup_fdc_flags	;01e0	21 ff 00	! . .
-	ld (0bfebh),hl		;01e3	22 eb bf	" . .
-	ld hl,0bee9h		;01e6	21 e9 be	! . .
+	ld (buf_remain),hl		;01e3	22 eb bf	" . .
+	ld hl,sector_buf		;01e6	21 e9 be	! . .
 	jr l01f2h		;01e9	18 07		. .
 l01ebh:
 	dec hl			;01eb	2b		+
-	ld (0bfebh),hl		;01ec	22 eb bf	" . .
-	ld hl,(0bfe9h)		;01ef	2a e9 bf	* . .
+	ld (buf_remain),hl		;01ec	22 eb bf	" . .
+	ld hl,(buf_rd_ptr)		;01ef	2a e9 bf	* . .
 l01f2h:
 	ld a,(hl)		;01f2	7e		~
 	inc hl			;01f3	23		#
-	ld (0bfe9h),hl		;01f4	22 e9 bf	" . .
+	ld (buf_rd_ptr),hl		;01f4	22 e9 bf	" . .
 	pop hl			;01f7	e1		.
 	dec c			;01f8	0d		.
 	ret			;01f9	c9		.
@@ -350,7 +372,7 @@ read_next_sector:
 	call div_hl_e		;01fc	cd 40 02	. @ .
 	ld a,b			;01ff	78		x
 	inc a			;0200	3c		<
-	ld (0bfefh),a		;0201	32 ef bf	2 . .
+	ld (fdc_sector),a		;0201	32 ef bf	2 . .
 	ld a,l			;0204	7d		}
 	pop de			;0205	d1		.
 	cp d			;0206	ba		.
@@ -362,14 +384,14 @@ read_next_sector:
 	jr nc,l0213h		;020f	30 02		0 .
 	ld b,002h		;0211	06 02		. .
 l0213h:
-	ld (0bff0h),a		;0213	32 f0 bf	2 . .
+	ld (fdc_track),a		;0213	32 f0 bf	2 . .
 	ld a,b			;0216	78		x
-	ld (0bff4h),a		;0217	32 f4 bf	2 . .
+	ld (fdc_side),a		;0217	32 f4 bf	2 . .
 l021ah:
 	call fdc_seek_read	;021a	cd 74 02	. t .
 	jr nz,l023bh		;021d	20 1c		  .
-	ld hl,0bff3h		;021f	21 f3 bf	! . .
-	ld a,(0bff0h)		;0222	3a f0 bf	: . .
+	ld hl,sys_flags		;021f	21 f3 bf	! . .
+	ld a,(fdc_track)		;0222	3a f0 bf	: . .
 	cp 016h			;0225	fe 16		. .
 	jr c,l022dh		;0227	38 04		8 .
 	set 7,(hl)		;0229	cb fe		. .
@@ -468,7 +490,7 @@ fdc_check_status:
 	pop bc			;02b0	c1		.
 	in a,(012h)		;02b1	db 12		. .
 	out (011h),a		;02b3	d3 11		. .
-	ld a,(0bff0h)		;02b5	3a f0 bf	: . .
+	ld a,(fdc_track)		;02b5	3a f0 bf	: . .
 	out (013h),a		;02b8	d3 13		. .
 	ld a,01fh		;02ba	3e 1f		> .
 	call fdc_send_cmd	;02bc	cd ca 02	. . .
@@ -487,11 +509,11 @@ l02ceh:
 	ret z			;02cf	c8		.
 	jr l02ceh		;02d0	18 fc		. .
 fdc_read_sector:
-	ld a,(0bfefh)		;02d2	3a ef bf	: . .
+	ld a,(fdc_sector)		;02d2	3a ef bf	: . .
 	out (012h),a		;02d5	d3 12		. .
-	ld hl,0bee9h		;02d7	21 e9 be	! . .
+	ld hl,sector_buf		;02d7	21 e9 be	! . .
 	ld b,088h		;02da	06 88		. .
-	ld a,(0bff4h)		;02dc	3a f4 bf	: . .
+	ld a,(fdc_side)		;02dc	3a f4 bf	: . .
 	or b			;02df	b0		.
 	call fdc_send_cmd	;02e0	cd ca 02	. . .
 l02e3h:
@@ -769,17 +791,17 @@ kbd_driver_start:
 	jr z,l0493h		;047f	28 12		( .
 	push af			;0481	f5		.
 	xor a			;0482	af		.
-	ld (0bffch),a		;0483	32 fc bf	2 . .
+	ld (kbd_state),a		;0483	32 fc bf	2 . .
 	pop af			;0486	f1		.
 	bit 0,a			;0487	cb 47		. G
 	jr z,get_kbd_char	;0489	28 ec		( .
 l048bh:
 	in a,(030h)		;048b	db 30		. 0
 	and 07fh		;048d	e6 7f		. .
-	ld (0bffdh),a		;048f	32 fd bf	2 . .
+	ld (kbd_last),a		;048f	32 fd bf	2 . .
 	ret			;0492	c9		.
 l0493h:
-	ld a,(0bffch)		;0493	3a fc bf	: . .
+	ld a,(kbd_state)		;0493	3a fc bf	: . .
 	or a			;0496	b7		.
 	jr z,l04adh		;0497	28 14		( .
 	in a,(070h)		;0499	db 70		. p
@@ -794,22 +816,22 @@ l04a3h:
 	jr nz,l04a3h		;04a6	20 fb		  .
 	pop bc			;04a8	c1		.
 l04a9h:
-	ld a,(0bffdh)		;04a9	3a fd bf	: . .
+	ld a,(kbd_last)		;04a9	3a fd bf	: . .
 	ret			;04ac	c9		.
 l04adh:
 	ld a,001h		;04ad	3e 01		> .
-	ld (0bffch),a		;04af	32 fc bf	2 . .
+	ld (kbd_state),a		;04af	32 fc bf	2 . .
 l04b2h:
 	in a,(070h)		;04b2	db 70		. p
 	bit 0,a			;04b4	cb 47		. G
 	jr z,l04b2h		;04b6	28 fa		( .
 	in a,(030h)		;04b8	db 30		. 0
-	ld (0bffdh),a		;04ba	32 fd bf	2 . .
+	ld (kbd_last),a		;04ba	32 fd bf	2 . .
 	in a,(070h)		;04bd	db 70		. p
 	bit 1,a			;04bf	cb 4f		. O
 	jr z,l04a9h		;04c1	28 e6		( .
 	xor a			;04c3	af		.
-	ld (0bffch),a		;04c4	32 fc bf	2 . .
+	ld (kbd_state),a		;04c4	32 fc bf	2 . .
 	jr l04a9h		;04c7	18 e0		. .
 get_char_echo:
 
@@ -826,9 +848,9 @@ putchar:
 	jr z,handle_cr		;04d3	28 19		( .
 	cp 00ah			;04d5	fe 0a		. .
 	jr z,handle_lf		;04d7	28 25		( %
-	ld (0bff9h),a		;04d9	32 f9 bf	2 . .
+	ld (vram_char),a		;04d9	32 f9 bf	2 . .
 	ld a,00eh		;04dc	3e 0e		> .
-	ld (0bffah),a		;04de	32 fa bf	2 . .
+	ld (vram_attr),a		;04de	32 fa bf	2 . .
 	call write_vram		;04e1	cd a5 05	. . .
 	call advance_cursor	;04e4	cd 06 05	. . .
 l04e7h:
@@ -844,14 +866,14 @@ handle_cr:
 	jr l04e7h		;04f7	18 ee		. .
 reset_column:
 	xor a			;04f9	af		.
-	ld (0bff8h),a		;04fa	32 f8 bf	2 . .
+	ld (cursor_col),a		;04fa	32 f8 bf	2 . .
 	ret			;04fd	c9		.
 handle_lf:
 	call cursor_on		;04fe	cd ec 05	. . .
 	call advance_row	;0501	cd 1f 05	. . .
 	jr l04e7h		;0504	18 e1		. .
 advance_cursor:
-	ld a,(0bff8h)		;0506	3a f8 bf	: . .
+	ld a,(cursor_col)		;0506	3a f8 bf	: . .
 	cp 0a7h			;0509	fe a7		. .
 	jr z,l0518h		;050b	28 0b		( .
 	bit 7,a			;050d	cb 7f		. .
@@ -859,84 +881,84 @@ advance_cursor:
 	inc a			;0511	3c		<
 l0512h:
 	xor 080h		;0512	ee 80		. .
-	ld (0bff8h),a		;0514	32 f8 bf	2 . .
+	ld (cursor_col),a		;0514	32 f8 bf	2 . .
 	ret			;0517	c9		.
 l0518h:
 	call reset_column	;0518	cd f9 04	. . .
 	call advance_row	;051b	cd 1f 05	. . .
 	ret			;051e	c9		.
 advance_row:
-	ld a,(0bff7h)		;051f	3a f7 bf	: . .
+	ld a,(cursor_row)		;051f	3a f7 bf	: . .
 	cp 018h			;0522	fe 18		. .
 	jr z,scroll_screen	;0524	28 08		( .
-	ld a,(0bff7h)		;0526	3a f7 bf	: . .
+	ld a,(cursor_row)		;0526	3a f7 bf	: . .
 	inc a			;0529	3c		<
-	ld (0bff7h),a		;052a	32 f7 bf	2 . .
+	ld (cursor_row),a		;052a	32 f7 bf	2 . .
 	ret			;052d	c9		.
 scroll_screen:
-	ld a,(0bff8h)		;052e	3a f8 bf	: . .
+	ld a,(cursor_col)		;052e	3a f8 bf	: . .
 	push af			;0531	f5		.
-	ld a,(0bffbh)		;0532	3a fb bf	: . .
+	ld a,(scroll_off)		;0532	3a fb bf	: . .
 	inc a			;0535	3c		<
-	ld (0bffbh),a		;0536	32 fb bf	2 . .
+	ld (scroll_off),a		;0536	32 fb bf	2 . .
 	cp 019h			;0539	fe 19		. .
 	jr z,l0555h		;053b	28 18		( .
 	out (004h),a		;053d	d3 04		. .
 l053fh:
 	xor a			;053f	af		.
-	ld (0bff8h),a		;0540	32 f8 bf	2 . .
+	ld (cursor_col),a		;0540	32 f8 bf	2 . .
 	ld a,020h		;0543	3e 20		>  
-	ld (0bff9h),a		;0545	32 f9 bf	2 . .
+	ld (vram_char),a		;0545	32 f9 bf	2 . .
 	ld a,00eh		;0548	3e 0e		> .
-	ld (0bffah),a		;054a	32 fa bf	2 . .
+	ld (vram_attr),a		;054a	32 fa bf	2 . .
 	call fill_row_spaces	;054d	cd 87 05	. . .
 	pop af			;0550	f1		.
-	ld (0bff8h),a		;0551	32 f8 bf	2 . .
+	ld (cursor_col),a		;0551	32 f8 bf	2 . .
 	ret			;0554	c9		.
 l0555h:
 	xor a			;0555	af		.
-	ld (0bffbh),a		;0556	32 fb bf	2 . .
+	ld (scroll_off),a		;0556	32 fb bf	2 . .
 	out (003h),a		;0559	d3 03		. .
 	jr l053fh		;055b	18 e2		. .
 clear_screen:
 	xor a			;055d	af		.
 l055eh:
-	ld (0bff7h),a		;055e	32 f7 bf	2 . .
+	ld (cursor_row),a		;055e	32 f7 bf	2 . .
 	xor a			;0561	af		.
-	ld (0bff8h),a		;0562	32 f8 bf	2 . .
+	ld (cursor_col),a		;0562	32 f8 bf	2 . .
 	ld a,020h		;0565	3e 20		>  
-	ld (0bff9h),a		;0567	32 f9 bf	2 . .
+	ld (vram_char),a		;0567	32 f9 bf	2 . .
 	ld a,00eh		;056a	3e 0e		> .
-	ld (0bffah),a		;056c	32 fa bf	2 . .
+	ld (vram_attr),a		;056c	32 fa bf	2 . .
 	call fill_row_spaces	;056f	cd 87 05	. . .
-	ld a,(0bff7h)		;0572	3a f7 bf	: . .
+	ld a,(cursor_row)		;0572	3a f7 bf	: . .
 	inc a			;0575	3c		<
 	cp 019h			;0576	fe 19		. .
 	jr nz,l055eh		;0578	20 e4		  .
 	xor a			;057a	af		.
-	ld (0bff8h),a		;057b	32 f8 bf	2 . .
+	ld (cursor_col),a		;057b	32 f8 bf	2 . .
 	out (003h),a		;057e	d3 03		. .
-	ld (0bffbh),a		;0580	32 fb bf	2 . .
+	ld (scroll_off),a		;0580	32 fb bf	2 . .
 	call cursor_off		;0583	cd dc 05	. . .
 	ret			;0586	c9		.
 fill_row_spaces:
 	call write_vram		;0587	cd a5 05	. . .
-	ld a,(0bff8h)		;058a	3a f8 bf	: . .
+	ld a,(cursor_col)		;058a	3a f8 bf	: . .
 	inc a			;058d	3c		<
-	ld (0bff8h),a		;058e	32 f8 bf	2 . .
+	ld (cursor_col),a		;058e	32 f8 bf	2 . .
 	bit 7,a			;0591	cb 7f		. .
 	jr nz,l05a0h		;0593	20 0b		  .
 	cp 028h			;0595	fe 28		. (
 	jr nz,fill_row_spaces	;0597	20 ee		  .
 	ld a,080h		;0599	3e 80		> .
-	ld (0bff8h),a		;059b	32 f8 bf	2 . .
+	ld (cursor_col),a		;059b	32 f8 bf	2 . .
 	jr fill_row_spaces	;059e	18 e7		. .
 l05a0h:
 	cp 0a8h			;05a0	fe a8		. .
 	jr nz,fill_row_spaces	;05a2	20 e3		  .
 	ret			;05a4	c9		.
 write_vram:
-	ld hl,0bff7h		;05a5	21 f7 bf	! . .
+	ld hl,cursor_row		;05a5	21 f7 bf	! . .
 	ld a,(hl)		;05a8	7e		~
 	out (000h),a		;05a9	d3 00		. .
 	inc hl			;05ab	23		#
@@ -948,7 +970,7 @@ write_vram:
 	ld c,(hl)		;05b2	4e		N
 	inc hl			;05b3	23		#
 	ld e,(hl)		;05b4	5e		^
-	ld hl,0bff3h		;05b5	21 f3 bf	! . .
+	ld hl,sys_flags		;05b5	21 f3 bf	! . .
 	set 5,(hl)		;05b8	cb ee		. .
 	ld a,006h		;05ba	3e 06		> .
 	out (060h),a		;05bc	d3 60		. `
@@ -975,17 +997,17 @@ l05beh:
 	ret			;05db	c9		.
 cursor_off:
 	ld a,020h		;05dc	3e 20		>  
-	ld (0bff9h),a		;05de	32 f9 bf	2 . .
+	ld (vram_char),a		;05de	32 f9 bf	2 . .
 	ld a,00eh		;05e1	3e 0e		> .
 	xor 0c0h		;05e3	ee c0		. .
-	ld (0bffah),a		;05e5	32 fa bf	2 . .
+	ld (vram_attr),a		;05e5	32 fa bf	2 . .
 	call write_vram		;05e8	cd a5 05	. . .
 	ret			;05eb	c9		.
 cursor_on:
 	ld a,020h		;05ec	3e 20		>  
-	ld (0bff9h),a		;05ee	32 f9 bf	2 . .
+	ld (vram_char),a		;05ee	32 f9 bf	2 . .
 	ld a,00eh		;05f1	3e 0e		> .
-	ld (0bffah),a		;05f3	32 fa bf	2 . .
+	ld (vram_attr),a		;05f3	32 fa bf	2 . .
 	call write_vram		;05f6	cd a5 05	. . .
 char_io_video_last:
 	ret			;05f9	c9		.

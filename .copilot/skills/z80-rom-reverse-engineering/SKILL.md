@@ -11,6 +11,7 @@ Disassemble and analyze Z80 binary ROM dumps, producing annotated assembly listi
 ## Tools
 
 - **z80dasm** — Z80 disassembler (installed at `/usr/local/bin/z80dasm`)
+- **z80asm** — Z80 assembler (installed at `/usr/local/bin/z80asm`) — used for round-trip verification
 
 ## Procedure
 
@@ -43,14 +44,21 @@ Scan the raw disassembly for patterns that indicate data rather than code:
 4. **Padding** — Long runs of `nop` (0x00) or `0FFh`
 5. **Unreachable code** — Instructions after unconditional `jp`, `ret`, or `rst` with no label
 
-Once identified, create a block definition file for z80dasm to produce cleaner output:
+Once identified, create a block definition file for z80dasm to produce cleaner output.
+
+**IMPORTANT:** Block definition format uses keyword syntax, NOT simple columns:
 
 ```
-# block-def file format: start end type
-# types: code, data, bytedata, worddata, pointers
-0x0000 0x00FF code
-0x0100 0x013F bytedata
+; comment lines start with semicolon
+reset_init: start 0x0000 last 0x0032 type code
+pad_data:   start 0x0033 last 0x0037 type bytedata
+irq_code:   start 0x0038 last 0x003c type code
 ```
+
+Format: `name: start 0xADDR last 0xADDR type TYPE`
+- Types: `code`, `bytedata`, `worddata`, `pointers`
+- `start` is the first byte, `last` is the last byte (inclusive)
+- Use `0x` prefix for hex addresses
 
 Then re-disassemble with the block file:
 ```sh
@@ -105,14 +113,21 @@ Identify and name subroutines by analyzing:
 3. **Exit patterns** — `ret`, `ret z`, `ret nz`, etc.
 4. **Functionality** — What the routine does (I/O init, string print, memory copy, etc.)
 
-Create a symbol file for z80dasm:
+Create a symbol file for z80dasm.
+
+**IMPORTANT:** Symbol file format uses `label: equ 0xADDR`, NOT space-separated columns:
 
 ```
-# symbol file format: address label ; comment
-0x0000 reset ; Cold boot entry
-0x0038 irq_handler ; IM1 interrupt service routine
-0x0100 init_serial ; Initialize SIO port A
+; comment lines start with semicolon
+reset: equ 0x0000
+irq_handler: equ 0x0038
+init_serial: equ 0x0100
 ```
+
+Format: `label: equ 0xADDR`
+- The colon after the label is required
+- Use `0x` prefix for hex addresses
+- To generate a sample, use: `z80dasm -g 0 -s sample.sym ROM.BIN` then inspect sample.sym
 
 Then re-disassemble with symbols:
 ```sh
@@ -139,27 +154,46 @@ Reverse engineering is iterative. After each pass:
 3. Re-disassemble to get cleaner output
 4. Cross-reference subroutines to understand calling relationships
 
-## Symbol File Format (z80dasm)
+## z80dasm File Formats
+
+### Symbol File (.sym)
 
 ```
 ; comments start with semicolon
-; format: address name
-0x0000 reset
-0x0038 irq_handler
-; address can also use decimal
-256 main
+; format: label: equ 0xADDR
+reset: equ 0x0000
+irq_handler: equ 0x0038
+main: equ 0x0100
 ```
 
-## Block Definition File Format (z80dasm)
+**Tip:** Generate a sample with `z80dasm -g 0 -s sample.sym ROM.BIN` to confirm format.
+
+### Block Definition File (.def)
 
 ```
-; Line format: START END TYPE
-; Types: code, data, bytedata, worddata, pointers
-; Addresses are hex with 0x prefix or decimal
-0x0000 0x0037 code
-0x0038 0x003c code
-0x003d 0x00ff bytedata
+; format: name: start 0xADDR last 0xADDR type TYPE
+; Types: code, bytedata, worddata, pointers
+reset_code: start 0x0000 last 0x0037 type code
+irq_handler: start 0x0038 last 0x003c type code
+padding: start 0x003d last 0x00ff type bytedata
 ```
+
+## z80asm Round-Trip Verification
+
+After annotating, always verify the assembly produces an identical binary:
+
+```sh
+z80asm -o /tmp/roundtrip.bin annotated.asm
+diff <(xxd ORIGINAL.BIN) <(xxd /tmp/roundtrip.bin)
+```
+
+### z80asm Syntax Notes
+
+- Constants use colon syntax: `label: equ 0bee8h` (colon required, unlike some assemblers)
+- Hex values use `0` prefix + `h` suffix: `0bee8h`, `0ffh` (leading zero needed if starts with A-F)
+- `defb` for byte data, `defw` for word data
+- `detectIndentation: false` + `tabSize: 8` in VS Code settings for proper column alignment
+- The `equ` definitions must appear before first use (put them after `org` but before code)
 
 ## Tips
 
