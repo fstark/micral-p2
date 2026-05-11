@@ -200,6 +200,81 @@ z80asm -o /tmp/roundtrip.bin annotated.asm
 diff <(xxd ORIGINAL.BIN) <(xxd /tmp/roundtrip.bin)
 ```
 
+### Phase 8: Named Constants for Magic Values
+
+After subroutines and RAM variables are symbolified, replace raw hex literals used as hardware commands, bit masks, configuration values, and ASCII characters with named EQU constants.
+
+#### Step 1: Inventory magic values
+
+Grep for immediate operands that aren't already symbolic:
+
+```sh
+# Find raw hex in ld, cp, and, or, xor, add, sub, out, in instructions
+grep -nE '\b0[0-9a-f]{2,3}h\b' annotated.asm | grep -vE '(equ|defb|defw)' | sort
+```
+
+Ignore values that are already named (EQU references) and data bytes (`defb`/`defw`).
+
+#### Step 2: Categorize by peripheral / subsystem
+
+Group the magic values into logical categories:
+
+- **I/O Ports** — Port addresses used in `in`/`out` instructions (e.g. `PORT_FDC_CMD equ 010h`)
+- **Hardware commands** — Command bytes written to peripherals (e.g. `FDC_CMD_RESTORE equ 00fh`)
+- **Status masks** — Bit masks used with `and`/`or`/`bit` after reading status (e.g. `FDC_STAT_BUSY equ 01h`)
+- **Configuration values** — Init bytes for UARTs, timers, video (e.g. `UART_MODE1 equ 04eh`)
+- **Protocol constants** — Record types, magic numbers in data formats (e.g. `REC_DATA equ 0c2h`)
+- **Display constants** — Screen geometry, attribute values, cursor control (e.g. `SCREEN_ROWS equ 019h`)
+- **ASCII characters** — Use character literals for printable chars (`'M'`, `':'`, `' '`) and named EQUs for control characters (`CR equ 00dh`, `ESC equ 01bh`)
+
+#### Step 3: Add EQU definitions grouped by category
+
+Insert after the RAM variable EQUs, before the first code label. Group with section headers:
+
+```z80
+; --- I/O Ports ---
+PORT_FDC_CMD:	equ	010h		; FD1797 command (W) / status (R)
+PORT_FDC_TRACK:	equ	011h		; FD1797 track register
+
+; --- FD1797 Commands ---
+FDC_CMD_RESTORE:	equ	00fh		; Restore to track 0
+FDC_CMD_FORCE_INT:	equ	0d0h		; Force interrupt
+
+; --- ASCII Control Characters ---
+CR:		equ	00dh		; Carriage return
+LF:		equ	00ah		; Line feed
+ESC:		equ	01bh		; Escape
+```
+
+#### Step 4: Replace in instruction operands
+
+Replace each raw value with its constant name. Target `ld`, `cp`, `and`, `or`, `xor`, `add`, `sub`, `in`, `out` operands — but NOT `defb`/`defw` data.
+
+For ASCII printable characters, use z80asm character literals directly:
+```z80
+	cp 'M'		; instead of cp 04dh
+	ld c,':'	; instead of ld c,03ah
+	ld a,' '	; instead of ld a,020h
+```
+
+For control characters and hardware values, use the named EQU:
+```z80
+	cp CR		; instead of cp 00dh
+	ld a,FDC_CMD_RESTORE	; instead of ld a,00fh
+```
+
+**Do NOT replace:**
+- `defb`/`defw` in string data or lookup tables
+- Values that happen to match but have different meaning in context (e.g. `ld bc,0000dh` where 13 is a byte count, not a CR character)
+- Addresses used as code targets or memory addresses
+
+#### Step 5: Round-trip verify
+
+```sh
+z80asm -o /tmp/roundtrip.bin annotated.asm
+cmp ORIGINAL.BIN /tmp/roundtrip.bin
+```
+
 ## Iterative Refinement
 
 Reverse engineering is iterative. After each pass:
