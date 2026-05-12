@@ -262,9 +262,10 @@ spinup_delay:
 	ld c,002h		; 2 bytes: command + drive
 	call fdc_send_bytes	; send and wait for result
 	call fdc_read_result	; read ST3 result
-		; Check ST3 bit 3 (Two Side flag) — NOTE: result is ignored
-		; due to subsequent LD A overwriting the flag. The Portal
-		; floppy is single-sided, so this has no practical effect.
+		; Check ST3 bit 3 (Two Side flag) — NOTE: result is discarded
+		; because the unconditional LD A,040h / OR 006h below always
+		; builds 046h. The Portal floppy is single-sided, so this
+		; has no practical effect.
 	ld a,(hl)		; ST3 result byte
 	and 008h		; test Two Side bit (bit 3)
 	rlca			; shift toward bit 7
@@ -276,7 +277,7 @@ spinup_delay:
 	or 006h			; Read Data command (06h) → 46h
 	ld (fdc_cmd_byte),a	; store command byte
 		; Determine disk geometry
-	ld hl,floppy_geom	; geometry data table
+	ld hl,floppy_geom_rom	; geometry data table
 	rlca			; test bit 7 of command (always 0 → carry=0)
 	ld a,(hl)		; A = sectors per track × heads (28h = 40)
 	jp nc,single_sided	; carry=0 → single-sided path (always taken)
@@ -712,7 +713,7 @@ fdc_result_loop:
 	rlca			; bit 7 (RQM) → carry
 	jp nc,fdc_result_loop	; wait for RQM=1
 	ld c,a			; save shifted MSR
-	and 020h		; test bit 4 (CB) after shift
+	and 020h		; MSR bit 4 (CB) is now bit 5 after RLCA; mask 20h tests it
 	ret z			; CB=0 → command complete, return
 	ld a,c			; restore shifted MSR
 	rlca			; bit 6 (DIO) → carry
@@ -779,7 +780,7 @@ wait_for_irq:
 floppy_params:
 	defb 053h		; Specify param 1: SRT=5, HUT=3
 	defb 030h		; Specify param 2: HLT=24, ND=0 (DMA)
-floppy_geom:
+floppy_geom_rom:
 	defb 028h		; 40 (total tracks, single-sided)
 fdc_read_params:
 	defb 001h		; N: bytes/sector code (1 = 256 bytes)

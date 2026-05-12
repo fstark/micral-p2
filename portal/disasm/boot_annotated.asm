@@ -9,6 +9,8 @@
 ; This 23-byte bootstrap runs at address 0000h on reset.
 ; It copies the main monitor code (1052 bytes starting at
 ; offset 0x17 in the ROM) to RAM at F800h, then jumps there.
+; The remaining 974 bytes of the 2 KB ROM are trailing zeros
+; and are intentionally not copied.
 ;
 ; The ROM chip is mapped at 0000h at power-on, but the main
 ; code is assembled for F800h — hence the relocation copy.
