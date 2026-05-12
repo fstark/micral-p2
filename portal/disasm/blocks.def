@@ -1,0 +1,14 @@
+; Portal ROM (main code) block definitions for z80dasm
+; Main code is loaded at F800h after bootstrapper copies it from ROM.
+;
+; NOTE: Address F802 contains the 8085 SIM opcode (0x30).
+; z80dasm would decode it as "jr nc,..." (Z80 relative jump), eating
+; the next byte and desyncing the disassembly. We mark it as a single
+; byte of data. In the annotated disassembly, add a comment:
+;   defb 030h   ; SIM — set interrupt mask (8085-only)
+;
+sim_opcode: start 0xF802 last 0xF802 type bytedata
+; Data: floppy parameter string "S0(" + bytes
+str_floppy_params: start 0xFAFD last 0xFB03 type bytedata
+; Data: prompt string "\t PORTAL..\0"
+str_portal: start 0xFB8C last 0xFB96 type bytedata
