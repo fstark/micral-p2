@@ -23,17 +23,17 @@
 ; reset @ 0x0000 — Copy main code to RAM and jump to it
 ; ============================================================
 reset:
-	di			; disable interrupts during copy
-	ld hl,00017h		; source: ROM offset 0x17 (main code start)
-	ld bc,0041ch		; byte count: 1052 bytes (main code size)
-	ld de,0f800h		; destination: RAM at F800h
+	di                                  ; disable interrupts during copy
+	ld hl,00017h                        ; source: ROM offset 0x17 (main code start)
+	ld bc,0041ch                        ; byte count: 1052 bytes (main code size)
+	ld de,0f800h                        ; destination: RAM at F800h
 copy_loop:
-	ld a,(hl)		; read byte from ROM
-	ld (de),a		; write to RAM
-	inc hl			; advance source
-	inc de			; advance destination
-	dec bc			; decrement count
-	ld a,b			; test BC == 0
-	or c			;   (OR high and low bytes)
-	jp nz,copy_loop		; loop until all bytes copied
-	jp 0f800h		; jump to main code in RAM
+	ld a,(hl)                           ; read byte from ROM
+	ld (de),a                           ; write to RAM
+	inc hl                              ; advance source
+	inc de                              ; advance destination
+	dec bc                              ; decrement count
+	ld a,b                              ; test BC == 0
+	or c                                ;   (OR high and low bytes)
+	jp nz,copy_loop                     ; loop until all bytes copied
+	jp 0f800h                           ; jump to main code in RAM
