@@ -104,6 +104,24 @@ Group into logical categories:
 - **Display constants** — Screen geometry, attribute values (e.g. `SCREEN_ROWS equ 019h`)
 - **ASCII characters** — Use character literals for printable chars (`'M'`, `':'`, `' '`) and named EQUs for control characters (`CR equ 00dh`, `ESC equ 01bh`)
 
+### Hex vs Decimal Representation
+
+Not every constant should be hex. Use the representation that best conveys the value's *meaning*:
+
+| Use hex (`0xxh`) | Use decimal |
+|---|---|
+| Bitmasks, flag fields (`07fh`, `03ch`) | Loop/iteration counts (48, 1000, 64) |
+| I/O port addresses | Screen dimensions (25 rows, 80 cols, 40 half) |
+| Hardware command bytes | Sector/drive/side numbers (0, 1, 2) |
+| Memory addresses | Byte/block sizes (13, 60, 128, 256) |
+| Attribute/color values | Threshold values (track >= 22) |
+| ASCII control chars as EQUs | Arithmetic constants (multiply by 16, subtract 7) |
+| Status register masks | Timer tick counts, timeout counters |
+
+**Rule of thumb:** If the value represents a *count*, *size*, or *human-readable quantity*, use decimal. If it represents a *bit pattern*, *address*, or *hardware register encoding*, use hex.
+
+**After converting**, run `format_asm.py` to realign comments — decimal values are often shorter than their hex equivalents, which shifts the comment column.
+
 ### Step 3: Add EQU definitions grouped by category
 
 Insert after the RAM variable EQUs, before the first code label:
