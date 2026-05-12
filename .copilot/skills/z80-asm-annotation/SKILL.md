@@ -203,6 +203,18 @@ cmp ORIGINAL.BIN /tmp/roundtrip.bin
 
 The assembly is now structurally clean but needs narrative comments explaining *why* the code does what it does.
 
+### Step 0: Add a file-level header
+
+Every annotated disassembly must open with a block comment containing:
+- Machine name, CPU, and clock speed
+- ROM size and address range
+- RAM variable region
+- High-level execution flow (entry point → major phases, with hex addresses)
+- Hardware peripheral inventory (chip names, port ranges)
+- ASCII memory map showing ROM, RAM, variables, and special registers
+
+This goes before the `org` directive so readers get full context before hitting any code.
+
 ### Step 1: Identify function boundaries
 
 ```sh
@@ -213,9 +225,11 @@ Group by subsystem (video, keyboard, FDC, POST, monitor, etc.).
 
 ### Step 2: Add function header comments
 
+Every function header must include the absolute ROM address using `@ 0xNNNN` after the routine name. This makes the disassembly self-contained for cross-referencing with hex dumps, logic analyzer traces, or hardware documentation.
+
 ```z80
 ; ============================================================
-; putchar — Write one character to the display
+; putchar @ 0x04CD — Write one character to the display
 ; Input:  C = character to print
 ; Output: cursor position updated
 ; Clobbers: A, B, HL
@@ -224,9 +238,9 @@ Group by subsystem (video, keyboard, FDC, POST, monitor, etc.).
 putchar:
 ```
 
-For short utility functions (< 10 instructions), a 1–2 line comment suffices:
+For short utility functions (< 10 instructions), a 1–2 line comment suffices but still includes the address:
 ```z80
-; Print CRLF sequence to display
+; print_crlf @ 0x044D — Output CR+LF to display
 print_crlf:
 ```
 
