@@ -785,12 +785,12 @@ floppy_params:
 	defb 053h                           ; Specify param 1: SRT=5, HUT=3
 	defb 030h                           ; Specify param 2: HLT=24, ND=0 (DMA)
 floppy_geom_rom:
-	defb 028h                           ; 40 (total tracks, single-sided)
+	defb 40                             ; total tracks (single-sided)
 fdc_read_params:
-	defb 001h                           ; N: bytes/sector code (1 = 256 bytes)
-	defb 010h                           ; EOT: last sector number (16)
-	defb 020h                           ; GPL: gap 3 length (32)
-	defb 000h                           ; DTL: don't care (N ≠ 0)
+	defb 1                              ; N: bytes/sector code (1 = 256 bytes)
+	defb 16                             ; EOT: last sector number (16)
+	defb 32                             ; GPL: gap 3 length (32)
+	defb 0                              ; DTL: don't care (N ≠ 0)
 
 ; ============================================================
 ; parse_hex @ 0xFB05 — Parse hex number from keyboard
@@ -919,7 +919,7 @@ get_key:
 ; ============================================================
 
 str_portal:
-	defb 009h                           ; length: 9 characters
+	defb 9                              ; length: 9 characters
 	defm " PORTAL.."                    ; prompt text
 	defb 000h                           ; (null terminator — not used by print_str)
 
