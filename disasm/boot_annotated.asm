@@ -92,9 +92,9 @@ SYS_BANK_SWITCH:    equ	040h            ; Bank switch (ROM out, RAM in)
 SYS_RAM_TEST:       equ	060h            ; RAM bank for POST testing
 
 	; --- SAA5070 LUCY Register IDs ---
-LUCY_REG_SYNC:      equ	003h            ; Sync/configuration register
-LUCY_REG_SCAN:      equ	006h            ; Scan control / video sync register
-LUCY_REG_KBD:       equ	007h            ; Keyboard status register
+LUCY_REG_SYNC:      equ	3               ; Sync/configuration register
+LUCY_REG_SCAN:      equ	6               ; Scan control / video sync register
+LUCY_REG_KBD:       equ	7               ; Keyboard status register
 LUCY_SYNC_BIT:      equ	020h            ; Bit 5: sync status flag
 LUCY_SCAN_ALL:      equ	0ffh            ; Enable all keyboard scan rows
 
@@ -103,12 +103,12 @@ VID_WRITE_STROBE:   equ	040h            ; Bit 6: character write strobe
 ATTR_NORMAL:        equ	00eh            ; Normal text attribute (white on black)
 ATTR_CURSOR_XOR:    equ	0c0h            ; XOR mask for cursor inversion
 COL_HALF:           equ	080h            ; Column half-select (right half)
-COL_HALF_COUNT:     equ	028h            ; Columns per half (40)
+COL_HALF_COUNT:     equ	40              ; Columns per half
 COL_LAST:           equ	0a7h            ; Last valid column position
 COL_WRAP:           equ	0a8h            ; Column wrap sentinel
-SCREEN_ROWS:        equ	019h            ; 25 display rows
-LAST_ROW:           equ	018h            ; Row 24 (0-based last row)
-SCREEN_COLS:        equ	050h            ; 80 display columns
+SCREEN_ROWS:        equ	25              ; 25 display rows
+LAST_ROW:           equ	24              ; Row 24 (0-based last row)
+SCREEN_COLS:        equ	80              ; 80 display columns
 
 	; --- 2661 UART Configuration ---
 UART_MODE1_VAL:     equ	04eh            ; Mode register 1: 8N1
@@ -125,7 +125,7 @@ REC_TYPE_MAX:       equ	0dbh            ; Above maximum valid type
 	; --- Miscellaneous ---
 TEST_PATTERN:       equ	055h            ; POST test pattern increment
 KBD_DATA_MASK:      equ	07fh            ; 7-bit keyboard data mask
-DD_TRACK_THRESH:    equ	016h            ; Track >= 22: double-density select
+DD_TRACK_THRESH:    equ	22              ; Track >= 22: double-density select
 
 	; --- ASCII Control Characters ---
 CR:                 equ	00dh            ; Carriage return
@@ -145,7 +145,7 @@ reset:
 	ld a,SYS_KBD_ENABLE                 ; keyboard + drive enable bits
 	out (PORT_SYS_CTRL),a               ; assert enable pulse
 		; Short delay for keyboard controller to latch
-	ld b,030h                           ; 48-iteration delay
+	ld b,48                             ; 48-iteration delay
 delay_loop:
 	djnz delay_loop                     ; spin until B=0
 		; Deassert keyboard enable pulse
@@ -221,7 +221,7 @@ init_display:
 	ld (sys_flags),a                    ; clear all flags
 	ld (cursor_col),a                   ; column = 0 (left edge)
 		; Prime SAA5120: write '.' at left-half column 0
-	ld a,001h                           ; minimal attribute
+	ld a,1                              ; minimal attribute
 	ld (vram_attr),a                    ; set attribute for write
 	ld a,'.'                            ; dummy character
 	ld (vram_char),a                    ; set character for write
@@ -258,7 +258,7 @@ print_str_loop:
 	or a                                ; test for null terminator
 	jr nz,print_str_loop                ; loop until end of string
 		; Read command character
-	ld b,000h                           ; no flags for get_char_echo
+	ld b,0                              ; no flags for get_char_echo
 	call get_char_echo                  ; read key, echo to screen → C
 		; Bare Enter → default boot from drive 0
 	ld a,c                              ; A = typed character
@@ -298,7 +298,7 @@ cmd_boot_parse:
 	or a                                ; must be zero
 	jr nz,cmd_error                     ; high byte must be 0
 	or e                                ; A = low byte (drive 0 or 1)
-	cp 002h                             ; drive >= 2?
+	cp 2                                ; drive >= 2?
 	jr nc,cmd_error                     ; drive >= 2 invalid
 		; Save drive number, parse starting sector
 	push af                             ; save drive number on stack
@@ -346,7 +346,7 @@ wait_drive_ready:
 	bit 7,a                             ; drive ready?
 	jr nz,wait_drive_ready              ; not yet → keep polling
 		; Long delay for drive motor spin-up / head settle
-	ld de,0c000h                        ; 49152 iterations
+	ld de,49152                         ; 49152 iterations
 settle_delay:
 	ex (sp),hl                          ; waste cycles (2 mem accesses)
 	ex (sp),hl                          ; restore HL
@@ -366,7 +366,7 @@ read_boot_sector:
 	ld h,a                              ; H = rotated first byte
 	ld (disk_geom),hl                   ; store geometry (spt, heads)
 		; Start reading from side 0, sector 1
-	ld a,000h                           ; side 0
+	ld a,0                              ; side 0
 	ld (fdc_side),a                     ; select side 0
 	inc a                               ; A = 1
 	ld (fdc_sector),a                   ; sector 1 (boot sector)
@@ -378,7 +378,7 @@ read_boot_sector:
 		; Bits 7,6 control which RAM banks to enable at 0xFFFD
 	ld a,(boot_cfg)                     ; load config byte from sector
 	ld hl,0fffdh                        ; bank control address
-	ld (hl),000h                        ; start with no banks enabled
+	ld (hl),0                           ; start with no banks enabled
 	bit 7,a                             ; test bank 1 flag
 	jr z,check_bank2                    ; not set → skip
 	set 1,(hl)                          ; enable bank 1
@@ -401,7 +401,7 @@ parse_record:
 	ld b,a                              ; B = record type
 		; If length >= 3, record has address (H:L) + extra byte
 	ld a,c                              ; A = record length
-	cp 003h                             ; at least 3 bytes?
+	cp 3                                ; at least 3 bytes?
 	jr c,dispatch_record                ; short record, skip addr
 	call get_next_byte                  ; read address high byte
 	ld h,a                              ; H = address high
@@ -443,7 +443,7 @@ exec_loaded_code:
 		; Copy trampoline code to RAM (can't run from ROM after bank switch)
 	ld hl,trampoline                    ; source: trampoline code in ROM
 	ld de,sector_buf                    ; dest: sector buffer in RAM
-	ld bc,0000dh                        ; 13 bytes to copy
+	ld bc,13                            ; 13 bytes to copy
 	ldir                                ; block copy ROM → RAM
 	pop de                              ; restore DE
 	pop hl                              ; restore entry point to HL
@@ -536,12 +536,12 @@ read_next_sector:
 	cp d                                ; track >= max?
 	jp nc,cmd_error                     ; past end of disk
 		; Determine side from track parity: even = side 0, odd = side 1
-	ld b,000h                           ; B = side 0 (default)
+	ld b,0                              ; B = side 0 (default)
 	ld a,l                              ; A = logical track number
 	or a                                ; clear carry, test A
 	rra                                 ; divide by 2; LSB → carry
 	jr nc,set_track                     ; carry clear = even → side 0
-	ld b,002h                           ; carry set = odd → side 1 (B=2)
+	ld b,2                              ; carry set = odd → side 1 (B=2)
 set_track:
 	ld (fdc_track),a                    ; physical track = LBA_track / 2
 	ld a,b                              ; A = side select value
@@ -580,7 +580,7 @@ retry_seek_read:
 ; ============================================================
 div_hl_e:
 	xor a                               ; clear accumulator (partial remainder)
-	ld d,010h                           ; 16-bit dividend = 16 iterations
+	ld d,16                             ; 16-bit dividend = 16 iterations
 div_loop:
 	add hl,hl                           ; shift dividend left, MSB into A
 	rla                                 ; rotate carry into A (partial remainder)
@@ -620,7 +620,7 @@ wait_restore_done:
 restore_settle:
 	push af                             ; save result
 	push hl                             ; save HL
-	ld hl,003e8h                        ; 1000 iterations
+	ld hl,1000                          ; 1000 iterations
 settle_delay_loop:
 	dec hl                              ; count down
 	ld a,h                              ; test high byte
@@ -648,7 +648,7 @@ wait_fdc_idle:
 	bit 0,a                             ; still busy?
 	jr nz,wait_fdc_idle                 ; yes → keep waiting
 	push bc                             ; save caller's BC
-	ld b,002h                           ; 2 attempts before full restore
+	ld b,2                              ; 2 attempts before full restore
 		; Issue read-address to discover current physical track
 read_addr_mark:
 	ld a,FDC_CMD_READ_ADDR              ; read address mark command
@@ -706,7 +706,7 @@ wait_seek_done:
 ; ============================================================
 fdc_send_cmd:
 	out (PORT_FDC_CMD),a                ; issue command
-	ld a,040h                           ; 64 iterations
+	ld a,64                             ; 64 iterations
 cmd_delay_loop:
 	dec a                               ; decrement counter
 	ret z                               ; done when counter hits 0
@@ -734,9 +734,9 @@ wait_read_done:
 	jr nz,wait_read_done                ; yes → NMI still transferring
 		; Check for read errors (lost data, CRC, record not found)
 	and FDC_STAT_ERR_READ               ; isolate error bits
-	ld a,000h                           ; pre-load error return value
+	ld a,0                              ; pre-load error return value
 	ret nz                              ; error: return 0
-	ld a,001h                           ; success: return 1
+	ld a,1                              ; success: return 1
 	ret                                 ; done
 
 ; ============================================================
@@ -755,18 +755,18 @@ hex_next_char:
 	sub '0'                             ; convert ASCII to value
 	cp LF                               ; value < 10?
 	jr c,hex_digit_valid                ; yes, 0-9 is valid
-	cp 011h                             ; gap between '9' and 'A'?
+	cp 17                               ; gap between '9' and 'A'?
 	ret c                               ; not a hex digit, return
-	sub 007h                            ; adjust A-F range
+	sub 7                               ; adjust A-F range
 hex_digit_valid:
-	cp 010h                             ; value >= 16?
+	cp 16                               ; value >= 16?
 	ccf                                 ; complement carry for ret c test
 	ret c                               ; not a hex digit
 	inc b                               ; count this digit
 		; Shift existing value left 4 bits and add new digit
 	ld l,a                              ; L = new nibble value
-	ld h,000h                           ; HL = nibble (0x00-0x0F)
-	ld a,010h                           ; multiply DE by 16 via repeated add
+	ld h,0                              ; HL = nibble (0x00-0x0F)
+	ld a,16                             ; multiply DE by 16 via repeated add
 hex_shift_loop:
 	add hl,de                           ; HL += DE (16 times = DE * 16 + nibble)
 	jp c,cmd_error                      ; overflow
@@ -790,7 +790,7 @@ cmd_star:
 		; cmd_cr_boot — Default boot on bare Enter key
 		; Boots from drive 0 ('B'), starting at sector 0x0080
 cmd_cr_boot:
-	ld hl,00080h                        ; default start sector (128)
+	ld hl,128                           ; default start sector (128)
 	ld a,'B'                            ; boot drive letter
 	ex de,hl                            ; DE = start sector
 	ex af,af'                           ; save drive letter in A'
@@ -800,7 +800,7 @@ cmd_boot_default:
 	ld a,c                              ; A = terminator from parse_hex
 	cp CR                               ; must be Enter
 	jp nz,cmd_error                     ; not CR → error
-	ld b,000h                           ; drive 0
+	ld b,0                              ; drive 0
 	ld de,reset+1                       ; sector 1 (DE = 0x0001)
 	jp boot_floppy                      ; begin boot sequence
 
@@ -893,10 +893,10 @@ cmd_mem_dump:
 	call print_crlf                     ; new line
 dump_print_addr:
 	call print_address                  ; print current address
-	ld a,004h                           ; 4 groups per line
+	ld a,4                              ; 4 groups per line
 	ex af,af'                           ; save group counter in A'
 dump_group:
-	ld b,004h                           ; 4 bytes per group
+	ld b,4                              ; 4 bytes per group
 dump_byte:
 	ld a,(de)                           ; read memory byte
 	call print_hex_byte                 ; print as hex
@@ -1111,7 +1111,7 @@ kbd_check_repeat:
 	jr nz,read_kbd_data                 ; still pressed → read fresh data
 		; Key released during repeat — delay, then return last key
 	push bc                             ; save BC
-	ld bc,00a00h                        ; ~2560 iteration delay
+	ld bc,2560                          ; ~2560 iteration delay
 kbd_repeat_delay:
 	dec bc                              ; decrement counter
 	ld a,b                              ; test high byte
@@ -1123,7 +1123,7 @@ kbd_return_cached:
 	ret                                 ; return cached key
 		; First key press — mark state and wait for key data ready
 kbd_first_press:
-	ld a,001h                           ; state = key held
+	ld a,1                              ; state = key held
 	ld (kbd_state),a                    ; mark as first press
 kbd_wait_key:
 	in a,(PORT_LUCY_DATA)               ; poll LUCY status
@@ -1398,7 +1398,7 @@ cursor_off:
 ;   2. Main RAM: write/verify 32KB pattern (both banks)
 ;   3. FDC: verify track/sector/data registers hold values
 ;   4. Serial: UART loopback test (TX→RX, full byte range)
-;   5. Timer: IM1 tick count in calibrated loop (expect 0x23-0x24)
+;   5. Timer: IM1 tick count in calibrated loop (expect 35-36)
 ; Error bits accumulate in A' (bit 0=VRAM, 1=RAM, 2=FDC,
 ; 3=serial, 4=timer). Displays "AUTO-TEST : OK" or error nums.
 ; ============================================================
@@ -1418,9 +1418,9 @@ post_start:
 		; This write pass stores two running pattern values per cell
 		; (one per phase), advancing C by +0x55 each time.
 	xor a                               ; start at row 0
-	ld c,000h                           ; C = running test pattern
+	ld c,0                              ; C = running test pattern
 post_vram_write:
-	ld d,000h                           ; D = column counter (0..79)
+	ld d,0                              ; D = column counter (0..79)
 	out (PORT_VIDEO_ROW),a              ; set row address
 	ld h,a                              ; save row in H
 	ld a,d                              ; A = column counter
@@ -1455,9 +1455,9 @@ post_vram_col_write:
 		; against the expected pattern. Clears the attr port (OUT 0)
 		; between reads to reset the SAA5120 latch for the next phase.
 	xor a                               ; start at row 0
-	ld c,000h                           ; reset test pattern to match write pass
+	ld c,0                              ; reset test pattern to match write pass
 post_vram_verify:
-	ld d,000h                           ; D = column counter
+	ld d,0                              ; D = column counter
 	out (PORT_VIDEO_ROW),a              ; set row address
 	ld h,a                              ; save row
 	ld a,d                              ; A = column counter
@@ -1507,10 +1507,10 @@ ram_test_bank2:
 	ld a,SYS_RAM_TEST                   ; select test bank (0x60)
 	out (PORT_SYS_CTRL),a               ; switch to RAM test bank
 ram_test_write:
-	ld c,080h                           ; 128 pages = 32KB
-	ld a,000h                           ; starting pattern value
+	ld c,128                            ; 128 pages = 32KB
+	ld a,0                              ; starting pattern value
 ram_write_page:
-	ld b,000h                           ; 256 bytes per page
+	ld b,0                              ; 256 bytes per page
 ram_write_byte:
 	ld (hl),a                           ; write pattern byte
 	inc hl                              ; advance address
@@ -1521,10 +1521,10 @@ ram_write_byte:
 		; Verify pass: compare pattern against written data
 	ld hl,reset                         ; HL = 0
 	add hl,de                           ; HL = start of test region
-	ld c,080h                           ; 128 pages
-	ld a,000h                           ; same starting pattern
+	ld c,128                            ; 128 pages
+	ld a,0                              ; same starting pattern
 ram_verify_page:
-	ld b,000h                           ; 256 bytes per page
+	ld b,0                              ; 256 bytes per page
 ram_verify_byte:
 	cp (hl)                             ; compare with written pattern
 	jr nz,ram_verify_fail               ; mismatch → RAM error
@@ -1552,7 +1552,7 @@ ram_test_exit:
 copy_ramtest_high:
 	ld hl,ram_test_bank2                ; source: test routine in ROM
 	ld de,0866dh                        ; dest: relocated address in RAM
-	ld bc,0003ch                        ; size = 60 bytes
+	ld bc,60                            ; size = 60 bytes
 	ldir                                ; block copy ROM → RAM
 		; Patch relocated copy's data pointers
 	ld hl,reset                         ; HL = 0 (start address for bank 2)
@@ -1572,7 +1572,7 @@ fdc_test_write:
 	out (PORT_FDC_SECTOR),a             ; write to sector register
 	add a,TEST_PATTERN                  ; advance again
 	out (PORT_FDC_DATA),a               ; write to data register
-	ld b,050h                           ; settle delay (80 iterations)
+	ld b,80                             ; settle delay (80 iterations)
 fdc_test_settle:
 	djnz fdc_test_settle                ; wait for registers to settle
 		; Read back and compare each register
@@ -1592,7 +1592,7 @@ fdc_test_settle:
 	add a,TEST_PATTERN                  ; advance to next pattern set
 	or a                                ; wrapped to 0? (full cycle done)
 	jr z,post_serial_setup              ; yes → FDC test passed
-	ld b,050h                           ; inter-pass settle delay
+	ld b,80                             ; inter-pass settle delay
 fdc_test_delay:
 	djnz fdc_test_delay                 ; wait
 	jr fdc_test_write                   ; next pattern set
@@ -1615,10 +1615,10 @@ post_serial_setup:
 	out (PORT_UART_MODE),a              ; set mode register 2
 	ld a,UART_CMD_VAL                   ; TX/RX enable + loopback
 	out (PORT_UART_CMD),a               ; configure UART command
-	ld c,000h                           ; start pattern at 0
+	ld c,0                              ; start pattern at 0
 		; Send test byte and wait for loopback echo
 post_serial_test:
-	ld d,0ffh                           ; timeout counter
+	ld d,255                            ; timeout counter
 wait_uart_txready:
 	dec d                               ; decrement timeout counter
 	jr z,serial_test_fail               ; timeout → UART stuck
@@ -1651,10 +1651,10 @@ serial_test_fail:
 	; --- TEST 5: Timer/interrupt test ---
 		; Enable IM1, count ticks during a calibrated loop.
 		; D is incremented by the IRQ handler each tick.
-		; Expect 0x23-0x24 ticks; outside range = timer failure.
+		; Expect 35-36 ticks; outside range = timer failure.
 post_timer_test:
 	ld hl,reset                         ; HL = 0 (will count down 65536)
-	ld d,000h                           ; D = tick counter (IRQ increments)
+	ld d,0                              ; D = tick counter (IRQ increments)
 	im 1                                ; use IM1 handler at 0x0038
 	ei                                  ; enable interrupts, start counting
 timer_count_loop:
@@ -1665,10 +1665,10 @@ timer_count_loop:
 	di                                  ; stop counting
 		; Check tick count is in expected range [0x23, 0x24]
 	ld a,d                              ; D = number of ticks
-	cp 023h                             ; < 0x23 = too slow
+	cp 35                               ; < 35 = too slow
 	jr c,timer_test_fail                ; too few ticks → timer slow
-	cp 025h                             ; >= 0x25 = too fast
-	jr c,post_complete                  ; in range [0x23,0x24] = OK
+	cp 37                               ; >= 37 = too fast
+	jr c,post_complete                  ; in range [35,36] = OK
 		; Timer test failed — set error bit 4
 timer_test_fail:
 	ex af,af'                           ; switch to error accumulator
@@ -1699,7 +1699,7 @@ print_autotest_loop:
 	jp monitor_prompt                   ; enter command loop
 		; Errors detected — print each set bit's number (0-7)
 post_show_errors:
-	ld b,008h                           ; check 8 bits
+	ld b,8                              ; check 8 bits
 	ld e,a                              ; E = error bitmap
 	ld d,'0'                            ; D = ASCII digit counter
 post_error_loop:
@@ -1726,5 +1726,5 @@ str_autotest:
 	defb 000h                           ; null terminator
 floppy_params:
 		; Floppy parameters table (geometry) + ROM padding to 0x0800
-	defb 020h, 010h                     ; sectors/track, heads
+	defb 32, 16                         ; sectors/track, heads
 	defs 86                             ; pad to fill 2KB ROM
