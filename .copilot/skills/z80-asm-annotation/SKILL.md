@@ -246,6 +246,8 @@ print_crlf:
 
 ### Step 3: Add inline comments explaining logic flow
 
+**Every assembly instruction must have an inline comment.** No instruction line should be left without a `;` comment — even self-documenting ones like `ld sp,stack_top` get a brief comment (e.g. `; init stack at top of RAM`). Consistency matters more than saving keystrokes. The goal is that a reader can understand the entire ROM by reading comments alone, without needing to mentally execute Z80 opcodes.
+
 Focus on:
 - **What each block accomplishes** (not what each opcode does)
 - **Why** a particular approach is used
