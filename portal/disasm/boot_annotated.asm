@@ -3,30 +3,28 @@
 ; ============================================================
 ;
 ; Machine:   Bull/R2E Micral Portal (8085 @ 5 MHz, 1984)
-; ROM:       2 KB (0x0000–0x07FF in physical EPROM)
-; Source:    z80dasm from portal.bin (first 23 bytes)
+; ROM:       2 KB (0x0000–0x07FF), first 23 bytes are this
+;            bootstrap; remainder is main monitor code + zeros.
 ;
-; This 23-byte bootstrap runs at address 0000h on reset.
-; It copies the main monitor code (1052 bytes starting at
-; offset 0x17 in the ROM) to RAM at F800h, then jumps there.
-; The remaining 974 bytes of the 2 KB ROM are trailing zeros
-; and are intentionally not copied.
-;
-; The ROM chip is mapped at 0000h at power-on, but the main
-; code is assembled for F800h — hence the relocation copy.
+; Copies 1052 bytes from ROM offset 17h to RAM at F800h,
+; then jumps there. The main code is assembled for F800h.
 ;
 ; ============================================================
 
 	org 00000h
+
+MAIN_CODE_SRC:  equ	00017h          ; ROM offset of main monitor code
+MAIN_CODE_LEN:  equ	1052            ; Bytes to copy (main code size)
+MAIN_CODE_DST:  equ	0f800h          ; RAM destination / entry point
 
 ; ============================================================
 ; reset @ 0x0000 — Copy main code to RAM and jump to it
 ; ============================================================
 reset:
 	di                                  ; disable interrupts during copy
-	ld hl,00017h                        ; source: ROM offset 0x17 (main code start)
-	ld bc,0041ch                        ; byte count: 1052 bytes (main code size)
-	ld de,0f800h                        ; destination: RAM at F800h
+	ld hl,MAIN_CODE_SRC                 ; source: ROM offset 0x17
+	ld bc,MAIN_CODE_LEN                 ; byte count: 1052 bytes
+	ld de,MAIN_CODE_DST                 ; destination: RAM at F800h
 copy_loop:
 	ld a,(hl)                           ; read byte from ROM
 	ld (de),a                           ; write to RAM
@@ -36,4 +34,4 @@ copy_loop:
 	ld a,b                              ; test BC == 0
 	or c                                ;   (OR high and low bytes)
 	jp nz,copy_loop                     ; loop until all bytes copied
-	jp 0f800h                           ; jump to main code in RAM
+	jp MAIN_CODE_DST                    ; jump to main code in RAM
