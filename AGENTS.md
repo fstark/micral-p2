@@ -20,7 +20,7 @@ This repository contains boot ROM disassemblies for vintage computers.
 - CPU: 8085 (Intel mnemonics, but disassembly uses Z80/Zilog syntax for tooling compatibility)
 - Boot ROM: `portal/ROMs/portal.bin`
 - Raw disassembly: `portal/disasm/boot_raw.asm` + `portal/disasm/main_raw.asm`
-- Annotated disassembly: to be created
+- Annotated disassembly: `portal/disasm/boot_annotated.asm` + `portal/disasm/main_annotated.asm`
 - Verify script: `portal/disasm/verify.sh` (reassembles and checks against original ROM)
 
 #### Portal ROM layout
