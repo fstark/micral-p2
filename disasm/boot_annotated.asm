@@ -1,5 +1,33 @@
-; z80dasm 1.2.0
-; command line: z80dasm -a -l -g 0x0000 -t -b disasm/blocks.def -S disasm/symbols.sym -o disasm/boot_annotated.asm ROMs/MICRAL_P2_CHARGEUR.BIN
+; ============================================================
+; MICRAL P2 Boot ROM — Annotated Disassembly
+; ============================================================
+;
+; Machine:   Bull/R2E Micral P2 (Z80A @ 4 MHz, 1981)
+; ROM:       2 KB (0x0000–0x07FF), mapped at reset
+; RAM:       Variables at 0xBEE8–0xBFFD (top of 48K)
+; Source:    z80dasm from MICRAL_P2_CHARGEUR.BIN
+;
+; Execution flow:
+;   0x0000  reset       → hardware init (LUCY, keyboard)
+;   0x05FA  post_start  → self-test (VRAM, RAM, FDC, UART, timer)
+;   0x0093  monitor     → command loop: Boot / Memory / Go / Terminal
+;   0x00F6  boot_floppy → load MOS hex records from floppy, bank-switch, run
+;
+; Hardware:
+;   SAA5070 (LUCY)  — video sync, keyboard scan (ports 0x60/0x70)
+;   SAA5120         — 25×80 teletext display (ports 0x00–0x04)
+;   FD1797          — floppy disk controller (ports 0x10–0x13)
+;   2661 (EPCI)     — serial UART (ports 0x50–0x53)
+;   KR3600          — keyboard encoder (port 0x30)
+;   CTC             — timer (port 0x07)
+;
+; Memory map:
+;   0x0000–0x07FF   Boot ROM (this file)
+;   0x0800–0xBEE7   User RAM (available after boot)
+;   0xBEE8–0xBFFD   Boot loader variables / stack
+;   0xFFFF          Bank latch (write: ROM out, RAM in)
+;
+; ============================================================
 
 	org 00000h
 
@@ -106,7 +134,7 @@ ESC:                equ	01bh            ; Escape
 ERR_CHAR:           equ	006h            ; Error indicator character (written to display)
 
 ; ============================================================
-; reset — Power-on entry point
+; reset @ 0x0000 — Power-on entry point
 ; Initializes stack, pulses keyboard controller enable,
 ; configures SAA5070 (LUCY) for video sync and keyboard
 ; scanning, then jumps to POST.
@@ -151,7 +179,7 @@ wait_lucy_sync:
 	defs 5
 
 ; ============================================================
-; irq_im1 — IM1 interrupt handler (address 0x0038)
+; irq_im1 @ 0x0038 — IM1 interrupt handler
 ; Called by CTC timer tick. Increments D as a tick counter
 ; (used by POST timing calibration), reloads timer, returns.
 ; ============================================================
@@ -164,7 +192,7 @@ irq_im1:
 	defs 41
 
 ; ============================================================
-; nmi_handler — Non-maskable interrupt (address 0x0066)
+; nmi_handler @ 0x0066 — Non-maskable interrupt
 ; Triggered by FDC DRQ (data request). Saves AF via shadow
 ; register, reads one byte from FDC data port into the
 ; buffer at (HL), advances HL, restores AF and returns.
@@ -179,7 +207,7 @@ nmi_handler:
 	retn
 
 ; ============================================================
-; init_display — Initialize video display state
+; init_display @ 0x006E — Initialize video display state
 ; Sets cursor to row 25 (off-screen), clears system flags
 ; and column, writes '.' at both column halves to prime the
 ; SAA5120, then clears the full screen.
@@ -207,7 +235,7 @@ init_display:
 	ret
 
 ; ============================================================
-; monitor_prompt — Main monitor command loop
+; monitor_prompt @ 0x0093 — Main monitor command loop
 ; Resets stack, prints "\r\n M P 2 ... " prompt, reads one
 ; character and dispatches:
 ;   CR → default boot (drive 0)    B → boot drive,sector
@@ -283,7 +311,7 @@ cmd_boot_parse:
 	jr nz,cmd_error
 
 ; ============================================================
-; boot_floppy — Floppy disk boot loader
+; boot_floppy @ 0x00F6 — Floppy disk boot loader
 ; Entry: B=drive (0/1), DE=starting sector, A'=drive letter
 ; Disables interrupts, saves drive number, selects the drive
 ; in system control register, waits for FDC ready, restores
@@ -431,7 +459,7 @@ trampoline:
 	jp (hl)                             ; jump to loaded program
 
 ; ============================================================
-; get_next_byte — Read next byte from sequential disk stream
+; get_next_byte @ 0x01BD — Read next byte from sequential disk stream
 ; Manages a 256-byte sector buffer with lazy refill: if the
 ; buffer is empty, reads the next sector from disk. Tracks
 ; record byte count in C: when C reaches 0, the record is
@@ -486,7 +514,7 @@ read_from_buf:
 	ret
 
 ; ============================================================
-; read_next_sector — Convert LBA to CHS and read one sector
+; read_next_sector @ 0x01FA — Convert LBA to CHS and read one sector
 ; Entry: HL = logical block address, DE = disk geometry
 ;        E = sectors per track, D = number of tracks
 ; Computes track/sector/side from LBA, seeks to the correct
@@ -545,7 +573,7 @@ retry_seek_read:
 	jr try_seek_read                    ; try seek again
 
 ; ============================================================
-; div_hl_e — Unsigned 16-bit by 8-bit division
+; div_hl_e @ 0x0240 — Unsigned 16-bit by 8-bit division
 ; Entry: HL = dividend, E = divisor
 ; Returns: L = quotient, B = remainder
 ; Uses shift-and-subtract algorithm (16 iterations).
@@ -569,7 +597,7 @@ div_next_bit:
 	ret
 
 ; ============================================================
-; fdc_restore — Restore FDC head to track 0
+; fdc_restore @ 0x0251 — Restore FDC head to track 0
 ; Aborts any pending command, issues restore, waits for
 ; completion, then delays for head settle time (~1ms).
 ; Returns: A = 0xFF if track-0 found, status bits if error
@@ -603,7 +631,7 @@ settle_delay_loop:
 	ret
 
 ; ============================================================
-; fdc_seek_read — Seek FDC head to target track
+; fdc_seek_read @ 0x0274 — Seek FDC head to target track
 ; Uses read-address-mark to discover current head position,
 ; then issues a seek command to the target track. If read-
 ; address fails (CRC or record-not-found), steps in and
@@ -671,7 +699,7 @@ wait_seek_done:
 	ret                                 ; Z set = success
 
 ; ============================================================
-; fdc_send_cmd — Send command byte to FDC with post-delay
+; fdc_send_cmd @ 0x02CA — Send command byte to FDC with post-delay
 ; Entry: A = command byte
 ; Writes to FDC command port, then burns ~64 cycles for the
 ; FDC to latch the command before returning.
@@ -685,7 +713,7 @@ cmd_delay_loop:
 	jr cmd_delay_loop
 
 ; ============================================================
-; fdc_read_sector — Read one sector into sector_buf via NMI
+; fdc_read_sector @ 0x02D2 — Read one sector into sector_buf via NMI
 ; Sets FDC sector register and side flag, issues read-sector
 ; command. Data transfer happens byte-by-byte via NMI handler.
 ; Waits for completion and checks for read errors.
@@ -712,7 +740,7 @@ wait_read_done:
 	ret
 
 ; ============================================================
-; parse_hex — Parse hex number from keyboard input
+; parse_hex @ 0x02F1 — Parse hex number from keyboard input
 ; Reads hex digits interactively, building a 16-bit value.
 ; Accepts 0-9, A-F (uppercase). Stops on any non-hex char
 ; (the terminator is returned in C for the caller to check).
@@ -748,7 +776,7 @@ hex_shift_loop:
 	jr hex_next_char                    ; read next digit
 
 ; ============================================================
-; cmd_star — Transparent terminal mode ('*' command)
+; cmd_star @ 0x0318 — Transparent terminal mode ('*' command)
 ; Echoes keystrokes directly to screen in a tight loop.
 ; Press ESC to exit back to the monitor prompt.
 ; ============================================================
@@ -777,7 +805,7 @@ cmd_boot_default:
 	jp boot_floppy
 
 ; ============================================================
-; cmd_go — Execute code at address ('G' command)
+; cmd_go @ 0x033E — Execute code at address ('G' command)
 ; Parses hex address, does bank-switch, jumps to it.
 ; ============================================================
 cmd_go:
@@ -791,7 +819,7 @@ cmd_go:
 	jp exec_loaded_code
 
 ; ============================================================
-; cmd_memory — Memory inspection submenu ('M' command)
+; cmd_memory @ 0x034F — Memory inspection submenu ('M' command)
 ; Sub-commands:
 ;   D<start>,<end>  — hex dump memory range (16 bytes/line)
 ;   M<addr>         — modify memory byte-by-byte ('.' to quit)
@@ -941,7 +969,7 @@ mem_modify_next:
 	jr mem_modify_loop
 
 ; ============================================================
-; nibble_to_ascii — Convert low nibble of A to ASCII hex char
+; nibble_to_ascii @ 0x042C — Convert low nibble of A to ASCII hex char
 ; Uses the classic DAA trick: A + 0x90 + DAA + 0x40 + DAA
 ; converts 0x0-0xF → '0'-'9', 'A'-'F'.
 ; Returns: A = ASCII hex character
@@ -954,7 +982,7 @@ nibble_to_ascii:
 	daa
 	ret
 ; ============================================================
-; negate_add_hl_de — ORPHAN (unreferenced dead code)
+; negate_add_hl_de @ 0x0435 — ORPHAN (unreferenced dead code)
 ; Computes HL = DE - HL (two's complement negate HL, add DE).
 ; Likely a utility left over from development; never called
 ; by any code path in this ROM.
@@ -970,7 +998,7 @@ negate_add_hl_de:
 	add hl,de
 	ret
 ; ============================================================
-; sub_l_a — ORPHAN (unreferenced dead code)
+; sub_l_a @ 0x043E — ORPHAN (unreferenced dead code)
 ; Computes L = L - A (with borrow into H).
 ; Another unused utility; no call or jump targets this
 ; address anywhere in the ROM.
@@ -987,7 +1015,7 @@ sub_l_a:
 	ret
 
 ; ============================================================
-; compare_hl_de — Compare HL with DE
+; compare_hl_de @ 0x0447 — Compare HL with DE
 ; Returns: Z flag set if HL == DE, NZ if different.
 ; ============================================================
 compare_hl_de:
@@ -999,14 +1027,14 @@ compare_hl_de:
 	ret
 
 ; ============================================================
-; print_crlf — Output carriage return + line feed
+; print_crlf @ 0x044D — Output carriage return + line feed
 ; ============================================================
 print_crlf:
 	ld c,CR
 	jr putchar
 
 ; ============================================================
-; print_hex_byte — Print byte in A as two hex digits
+; print_hex_byte @ 0x0451 — Print byte in A as two hex digits
 ; Converts low nibble first (saves to H), then shifts high
 ; nibble down and prints high digit first, then low digit.
 ; ============================================================
@@ -1027,7 +1055,7 @@ print_hex_byte:
 	jr putchar                          ; then low digit
 
 ; ============================================================
-; print_address — Print CRLF, then DE as 4 hex digits + space
+; print_address @ 0x0465 — Print CRLF, then DE as 4 hex digits + space
 ; ============================================================
 print_address:
 	call print_crlf
@@ -1040,7 +1068,7 @@ print_address:
 	jr putchar
 
 ; ============================================================
-; get_kbd_char — Read one key from keyboard with auto-repeat
+; get_kbd_char @ 0x0477 — Read one key from keyboard with auto-repeat
 ; Polls SAA5070 (LUCY) keyboard status register. Handles
 ; three states:
 ;   - Key released (bit 1): reset debounce, check if new key
@@ -1113,7 +1141,7 @@ kbd_wait_key:
 	jr kbd_return_cached
 
 ; ============================================================
-; get_char_echo — Read key and echo to display
+; get_char_echo @ 0x04C9 — Read key and echo to display
 ; Calls get_kbd_char, then falls through to putchar.
 ; ============================================================
 get_char_echo:
@@ -1121,7 +1149,7 @@ get_char_echo:
 	ld c,a                              ; C = key for putchar
 
 ; ============================================================
-; putchar — Output character to video display
+; putchar @ 0x04CD — Output character to video display
 ; Entry: C = character to display
 ; Handles CR (new line + reset column), LF (advance row),
 ; and printable characters (write to VRAM + advance cursor).
@@ -1166,7 +1194,7 @@ handle_lf:
 	jr putchar_done
 
 ; ============================================================
-; advance_cursor — Move cursor right by one character position
+; advance_cursor @ 0x0506 — Move cursor right by one character position
 ; The SAA5120 uses split-column addressing: columns 0-39 in
 ; the left half (bit 7 clear), 40-79 in the right half (bit 7
 ; set). Advances within a half, toggles between halves at
@@ -1199,7 +1227,7 @@ advance_row:
 	ret
 
 ; ============================================================
-; scroll_screen — Scroll display up one line
+; scroll_screen @ 0x052E — Scroll display up one line
 ; Increments the SAA5120 hardware scroll register (offset of
 ; first visible row), wraps at row 25, then clears the newly
 ; exposed bottom row with spaces. This is zero-copy hardware
@@ -1235,7 +1263,7 @@ scroll_wrap:
 	jr clear_new_row
 
 ; ============================================================
-; clear_screen — Clear entire 25×80 display
+; clear_screen @ 0x055D — Clear entire 25×80 display
 ; Fills all rows with spaces + normal attribute, resets
 ; scroll offset and column, updates cursor.
 ; ============================================================
@@ -1262,7 +1290,7 @@ clear_row_loop:
 	ret
 
 ; ============================================================
-; fill_row_spaces — Fill current row from current column onward
+; fill_row_spaces @ 0x0587 — Fill current row from current column onward
 ; Handles SAA5120 split-column addressing: writes left half
 ; (cols 0-39), then switches to right half (0x80-0xA7).
 ; Returns when column wraps past 0xA7.
@@ -1286,7 +1314,7 @@ fill_check_done:
 	ret                                 ; row complete
 
 ; ============================================================
-; write_vram — Write character + attribute to video RAM
+; write_vram @ 0x05A5 — Write character + attribute to video RAM
 ; Reads cursor position, character, and attribute from RAM
 ; variables, then programs the SAA5120 via I/O ports. Waits
 ; for LUCY video sync (blanking interval) before writing to
@@ -1339,7 +1367,7 @@ wait_video_sync:
 	ret
 
 ; ============================================================
-; cursor_on — Show cursor block (inverted attribute)
+; cursor_on @ 0x05DC — Show cursor block (inverted attribute)
 ; Writes space with XOR'd attribute to create visible cursor.
 ; ============================================================
 cursor_on:
@@ -1352,7 +1380,7 @@ cursor_on:
 	ret
 
 ; ============================================================
-; cursor_off — Remove cursor block (restore normal attribute)
+; cursor_off @ 0x05EC — Remove cursor block (restore normal attribute)
 ; Writes space with normal attribute to erase cursor.
 ; ============================================================
 cursor_off:
@@ -1364,7 +1392,7 @@ cursor_off:
 	ret
 
 ; ============================================================
-; post_start — Power-On Self Test (POST)
+; post_start @ 0x05FA — Power-On Self Test (POST)
 ; Tests all major hardware subsystems in sequence:
 ;   1. Video RAM: write/verify pattern to all 25×80 cells
 ;   2. Main RAM: write/verify 32KB pattern (both banks)
@@ -1383,73 +1411,84 @@ post_start:
 	ld a,SYS_ACTIVE
 	out (PORT_SYS_CTRL),a
 	; --- TEST 1: Video RAM ---
-		; Write incrementing pattern (+0x55) to every cell, then verify
+		; Write incrementing pattern (+0x55) to every cell, then verify.
+		; The SAA5120 uses a two-phase write protocol per cell: the
+		; column address is written twice — once with bit 6 (strobe)
+		; set, once without — each paired with an attribute byte.
+		; This write pass stores two running pattern values per cell
+		; (one per phase), advancing C by +0x55 each time.
 	xor a                               ; start at row 0
 	ld c,000h                           ; C = running test pattern
 post_vram_write:
-	ld d,000h                           ; D = column counter
-	out (PORT_VIDEO_ROW),a              ; set row
+	ld d,000h                           ; D = column counter (0..79)
+	out (PORT_VIDEO_ROW),a              ; set row address
 	ld h,a                              ; save row in H
 	ld a,d
 post_vram_col_write:
-	rrca
-	ld b,a
-	or VID_WRITE_STROBE
-	out (PORT_VIDEO_CHAR),a
+		; Column rotation: RRCA produces the SAA5120 column address
+		; from a linear 0-79 counter (maps 0-39 to left half, 40-79
+		; to right half via the carry/high-bit rotation).
+	rrca                                ; rotate column into SAA5120 format
+	ld b,a                              ; B = column without strobe
+	or VID_WRITE_STROBE                 ; set bit 6 = write strobe
+	out (PORT_VIDEO_CHAR),a             ; phase 1: column WITH strobe
 	ld a,c
-	out (PORT_VIDEO_ATTR),a
-	add a,TEST_PATTERN
+	out (PORT_VIDEO_ATTR),a             ; phase 1: write pattern byte
+	add a,TEST_PATTERN                  ; advance pattern (+0x55)
 	ld c,a
-	ld a,b
-	out (PORT_VIDEO_CHAR),a
+	ld a,b                              ; column WITHOUT strobe
+	out (PORT_VIDEO_CHAR),a             ; phase 2: column without strobe
 	ld a,c
-	out (PORT_VIDEO_ATTR),a
-	add a,TEST_PATTERN
+	out (PORT_VIDEO_ATTR),a             ; phase 2: write next pattern byte
+	add a,TEST_PATTERN                  ; advance pattern again
 	ld c,a
-	inc d
+	inc d                               ; next column
 	ld a,d
-	cp SCREEN_COLS
+	cp SCREEN_COLS                      ; done all 80 columns?
 	jr nz,post_vram_col_write
-	ld a,h
+	ld a,h                              ; restore row
 	inc a
-	cp SCREEN_ROWS
+	cp SCREEN_ROWS                      ; done all 25 rows?
 	jr nz,post_vram_write
-		; VRAM verify pass: read back and compare
+		; VRAM verify pass: replay the same pattern and read back.
+		; Reads attribute via IN after selecting the column; compares
+		; against the expected pattern. Clears the attr port (OUT 0)
+		; between reads to reset the SAA5120 latch for the next phase.
 	xor a
-	ld c,000h                           ; reset test pattern
+	ld c,000h                           ; reset test pattern to match write pass
 post_vram_verify:
-	ld d,000h
-	out (PORT_VIDEO_ROW),a
-	ld h,a
+	ld d,000h                           ; D = column counter
+	out (PORT_VIDEO_ROW),a              ; set row address
+	ld h,a                              ; save row
 	ld a,d
 post_vram_col_verify:
-	rrca
-	ld b,a
-	or VID_WRITE_STROBE
-	out (PORT_VIDEO_CHAR),a
-	in a,(PORT_VIDEO_ATTR)
-	cp c
-	jr nz,post_vram_fail
-	add a,TEST_PATTERN
+	rrca                                ; rotate column into SAA5120 format
+	ld b,a                              ; B = column without strobe
+	or VID_WRITE_STROBE                 ; set strobe bit
+	out (PORT_VIDEO_CHAR),a             ; select column (phase 1)
+	in a,(PORT_VIDEO_ATTR)              ; read back stored attribute
+	cp c                                ; compare against expected pattern
+	jr nz,post_vram_fail                ; mismatch → VRAM error
+	add a,TEST_PATTERN                  ; advance expected pattern
 	ld c,a
 	xor a
-	out (PORT_VIDEO_ATTR),a
-	ld a,b
-	out (PORT_VIDEO_CHAR),a
-	in a,(PORT_VIDEO_ATTR)
-	cp c
-	jr nz,post_vram_fail
-	add a,TEST_PATTERN
+	out (PORT_VIDEO_ATTR),a             ; clear attr latch for phase 2
+	ld a,b                              ; column without strobe
+	out (PORT_VIDEO_CHAR),a             ; select column (phase 2)
+	in a,(PORT_VIDEO_ATTR)              ; read back second attribute
+	cp c                                ; compare against expected
+	jr nz,post_vram_fail                ; mismatch → VRAM error
+	add a,TEST_PATTERN                  ; advance expected pattern
 	ld c,a
 	xor a
-	out (PORT_VIDEO_ATTR),a
-	inc d
+	out (PORT_VIDEO_ATTR),a             ; clear attr latch
+	inc d                               ; next column
 	ld a,d
-	cp SCREEN_COLS
+	cp SCREEN_COLS                      ; done all 80?
 	jr nz,post_vram_col_verify
-	ld a,h
+	ld a,h                              ; restore row
 	inc a
-	cp SCREEN_ROWS
+	cp SCREEN_ROWS                      ; done all 25?
 	jr nz,post_vram_verify
 	jr post_ram_test
 		; VRAM test failed — set error bit 0
