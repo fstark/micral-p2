@@ -1,0 +1,14 @@
+; Olympia Boss system ROM (251-462) block definitions for z80dasm
+; ROM is 2048 bytes, org 0000h. Z80 CPU with IM2.
+;
+code:           start 0x0000 last 0x0696 type code
+prompt_str:     start 0x0697 last 0x06a2 type bytedata
+floppy_params1: start 0x06a3 last 0x06a9 type bytedata
+floppy_params2: start 0x06aa last 0x06b0 type bytedata
+floppy_params3: start 0x06b1 last 0x06b7 type bytedata
+sio_init_data:  start 0x06b8 last 0x06cb type bytedata
+lookup_table:   start 0x06cc last 0x06eb type bytedata
+fdc_cmds:       start 0x06ec last 0x06f5 type bytedata
+crt_init_data:  start 0x06f6 last 0x06ff type bytedata
+unused:         start 0x0700 last 0x07ef type bytedata
+int_vectors:    start 0x07f0 last 0x07ff type worddata

@@ -49,3 +49,24 @@ In the annotated disassembly, comment them as:
 ```
 
 This preserves reassemblability with z80asm while documenting the true instruction.
+
+### Olympia Boss
+- Directory: `olympia-boss/`
+- CPU: Z80A
+- System ROM: `olympia-boss/ROMs/olympia_boss_system_251-462.bin` (2K, boot monitor)
+- Graphics ROM: `olympia-boss/ROMs/olympia_boss_graphics_251-461.bin` (2K, character generator)
+- Raw disassembly: `olympia-boss/disasm/boot_raw.asm`
+- Annotated disassembly: `olympia-boss/disasm/boot_annotated.asm`
+- Block definitions: `olympia-boss/disasm/blocks.def`
+- Verify script: `olympia-boss/disasm/verify.sh`
+
+#### Olympia Boss ROM layout
+The system ROM (2048 bytes) runs in-place at org 0000h:
+- 0x0000–0x0696: Code (reset vector, monitor, drivers)
+- 0x0697–0x06FF: Data tables (strings, drive params, SIO init, FDC commands)
+- 0x0700–0x07EF: Unused (zero-filled)
+- 0x07F0–0x07FF: IM 2 interrupt vector table (I register = 07h)
+
+The ROM banks itself out via port 60h before jumping to loaded programs.
+The graphics ROM is a pure character generator (font bitmaps), not executable.
+
