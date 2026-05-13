@@ -63,125 +63,125 @@
 ; ==========================================================================
 
 ; --- ASCII control characters ---
-CHAR_NUL:        equ 000h
-CHAR_LF:         equ 00ah       ; Line feed
-CHAR_CR:         equ 00dh       ; Carriage return
-CHAR_ESC:        equ 01bh       ; Escape
+CHAR_NUL:           equ	000h
+CHAR_LF:            equ	00ah            ; Line feed
+CHAR_CR:            equ	00dh            ; Carriage return
+CHAR_ESC:           equ	01bh            ; Escape
 
 ; --- Display command bytes ---
-DISP_RESET:      equ 000h       ; Reset display controller
-DISP_ON:         equ 020h       ; Display on
-DISP_CURSOR:     equ 081h       ; Set cursor position register
-DISP_ENABLE:     equ 0a0h       ; Enable display output
-DISP_MODE:       equ 042h       ; Set display mode
-DISP_START:      equ 0c0h       ; Start display output
+DISP_RESET:         equ	000h            ; Reset display controller
+DISP_ON:            equ	020h            ; Display on
+DISP_CURSOR:        equ	081h            ; Set cursor position register
+DISP_ENABLE:        equ	0a0h            ; Enable display output
+DISP_MODE:          equ	042h            ; Set display mode
+DISP_START:         equ	0c0h            ; Start display output
 
 ; --- CRT controller commands ---
-CRTC_INIT:       equ 041h       ; CRTC initialise
-CRTC_START:      equ 0c5h       ; CRTC start DMA / run
-CRTC_WRAP:       equ 080h       ; Address wrap flag in CRTC registers
+CRTC_INIT:          equ	041h            ; CRTC initialise
+CRTC_START:         equ	0c5h            ; CRTC start DMA / run
+CRTC_WRAP:          equ	080h            ; Address wrap flag in CRTC registers
 
 ; --- Serial protocol record types ---
-REC_DATA:        equ 0c2h       ; Data record (store bytes)
-REC_ABORT:       equ 0d2h       ; Abort/error record
-REC_EXEC:        equ 0c6h       ; Execute record (jump to address)
-REC_SKIP_LO:     equ 0c1h       ; Lower bound of skip range
-REC_SKIP_HI:     equ 0dbh       ; Upper bound of skip range
+REC_DATA:           equ	0c2h            ; Data record (store bytes)
+REC_ABORT:          equ	0d2h            ; Abort/error record
+REC_EXEC:           equ	0c6h            ; Execute record (jump to address)
+REC_SKIP_LO:        equ	0c1h            ; Lower bound of skip range
+REC_SKIP_HI:        equ	0dbh            ; Upper bound of skip range
 
 ; --- FDC commands ---
-FDC_RECAL:       equ 007h       ; Recalibrate command
-FDC_SEEK:        equ 00fh       ; Seek command
-FDC_STAT_RDY:    equ 002h       ; Status: ready bit
-FDC_STAT_DRQ:    equ 040h       ; Status: data request
-FDC_STAT_BUSY:   equ 082h       ; Status: busy + DRQ combined
+FDC_RECAL:          equ	007h            ; Recalibrate command
+FDC_SEEK:           equ	00fh            ; Seek command
+FDC_STAT_RDY:       equ	002h            ; Status: ready bit
+FDC_STAT_DRQ:       equ	040h            ; Status: data request
+FDC_STAT_BUSY:      equ	082h            ; Status: busy + DRQ combined
 
 ; --- System control port values ---
-SYS_BANKOUT:     equ 001h       ; Bank out ROM, map RAM at 0000h
-SYS_DRV_SEL:     equ 002h       ; Drive select / enable
-SYS_DENSITY:     equ 080h       ; Bit 7: density flag
-SYS_TYPE_MASK:   equ 003h       ; Drive type mask (after rotation)
-SYS_BIT5:        equ 020h       ; Config bit 5
-SYS_TYPE_BITS:   equ 0c0h       ; Drive type bits 7:6
+SYS_BANKOUT:        equ	001h            ; Bank out ROM, map RAM at 0000h
+SYS_DRV_SEL:        equ	002h            ; Drive select / enable
+SYS_DENSITY:        equ	080h            ; Bit 7: density flag
+SYS_TYPE_MASK:      equ	003h            ; Drive type mask (after rotation)
+SYS_BIT5:           equ	020h            ; Config bit 5
+SYS_TYPE_BITS:      equ	0c0h            ; Drive type bits 7:6
 
 ; --- PPI mode/BSR values ---
-PPI_MODE_SET:    equ 0bch       ; Port A=input(mode1), B=input
-PPI_BSR_PC2:     equ 005h       ; BSR: set PC2 (strobe)
-PPI_BSR_PC4:     equ 009h       ; BSR: set PC4 (int enable)
+PPI_MODE_SET:       equ	0bch            ; Port A=input(mode1), B=input
+PPI_BSR_PC2:        equ	005h            ; BSR: set PC2 (strobe)
+PPI_BSR_PC4:        equ	009h            ; BSR: set PC4 (int enable)
 
 ; --- Display geometry ---
-SCR_COLS:        equ 80         ; Columns per line
-SCR_LINES:       equ 27         ; Visible screen lines
-SCR_STRIDE:      equ 120        ; Bytes per display line (80+38+2)
-SCR_MAX_COL:     equ 79         ; Maximum column index (0-based)
-SCR_PAD:         equ 38         ; Padding bytes per line
+SCR_COLS:           equ	80              ; Columns per line
+SCR_LINES:          equ	27              ; Visible screen lines
+SCR_STRIDE:         equ	120             ; Bytes per display line (80+38+2)
+SCR_MAX_COL:        equ	79              ; Maximum column index (0-based)
+SCR_PAD:            equ	38              ; Padding bytes per line
 
 ; --- I/O Port equates ---
-PORT_DMA_ADDR:   equ 000h
-PORT_DMA_COUNT:  equ 001h
-PORT_CRTC_START: equ 004h
-PORT_CRTC_END:   equ 005h
-PORT_CRTC_SCRL:  equ 006h
-PORT_CRTC_SEND:  equ 007h
-PORT_CRTC_CMD:   equ 008h
-PORT_SIO_B_CTRL: equ 010h
-PORT_SIO_B_DATA: equ 011h
-PORT_SIO_A_DATA: equ 030h
-PORT_SIO_A_CTRL: equ 031h
-PORT_PPI_A:      equ 040h
-PORT_PPI_CTRL:   equ 043h
-PORT_SYS_CTRL:   equ 060h
-PORT_FDC_CTRL:   equ 071h
-PORT_FDC_STAT:   equ 072h
-PORT_FDC_DATA:   equ 073h
-PORT_DISP_DATA:  equ 080h
-PORT_DISP_CMD:   equ 081h
+PORT_DMA_ADDR:      equ	000h
+PORT_DMA_COUNT:     equ	001h
+PORT_CRTC_START:    equ	004h
+PORT_CRTC_END:      equ	005h
+PORT_CRTC_SCRL:     equ	006h
+PORT_CRTC_SEND:     equ	007h
+PORT_CRTC_CMD:      equ	008h
+PORT_SIO_B_CTRL:    equ	010h
+PORT_SIO_B_DATA:    equ	011h
+PORT_SIO_A_DATA:    equ	030h
+PORT_SIO_A_CTRL:    equ	031h
+PORT_PPI_A:         equ	040h
+PORT_PPI_CTRL:      equ	043h
+PORT_SYS_CTRL:      equ	060h
+PORT_FDC_CTRL:      equ	071h
+PORT_FDC_STAT:      equ	072h
+PORT_FDC_DATA:      equ	073h
+PORT_DISP_DATA:     equ	080h
+PORT_DISP_CMD:      equ	081h
 
 ; --- Miscellaneous constants ---
-RELAY_LEN:       equ 5          ; Length of relay code copied to RAM
-BUF_SIZE:        equ 255        ; DMA buffer usable bytes
-FDC_CMD_LEN:     equ 8          ; FDC command block length
-MAX_DRIVES:      equ 4          ; Maximum drive/unit number
-SEC_128:         equ 128        ; 128-byte sector size
-SEC_PER_TRK_MAX: equ 32         ; Max sectors per track
-MAX_SECTOR:      equ 31         ; Maximum sector number (0-based)
-MAX_HEAD:        equ 3          ; Maximum head number
+RELAY_LEN:          equ	5               ; Length of relay code copied to RAM
+BUF_SIZE:           equ	255             ; DMA buffer usable bytes
+FDC_CMD_LEN:        equ	8               ; FDC command block length
+MAX_DRIVES:         equ	4               ; Maximum drive/unit number
+SEC_128:            equ	128             ; 128-byte sector size
+SEC_PER_TRK_MAX:    equ	32              ; Max sectors per track
+MAX_SECTOR:         equ	31              ; Maximum sector number (0-based)
+MAX_HEAD:           equ	3               ; Maximum head number
 
 ; --- RAM variable equates ---
-STACK_TOP:       equ 0bed2h     ; Stack pointer init / boot cmd storage
-DMA_BUF:         equ 0bed3h     ; DMA transfer buffer (256 bytes)
-BUF_PTR:         equ 0bfd3h     ; Buffer read pointer
-BLOCK_CNT:       equ 0bfd5h     ; Block bytes remaining
-LOAD_ADDR:       equ 0bfd7h     ; Current load address
-FDC_CMD:         equ 0bfd9h     ; FDC command block (8 bytes)
-SEC_PER_TRK:     equ 0bfdch     ; Sectors per track
-FDC_PARAMS:      equ 0bfdfh     ; FDC working parameters
-TRK_CMP_0:      equ 0bfe1h     ; Track compare (side 0)
-TRK_CMP_1:      equ 0bfe3h     ; Track compare (side 1)
-SIO_CMD:         equ 0bfe5h     ; SIO command buffer
-SIO_SEEK:        equ 0bfe6h     ; SIO seek command area
-SIO_SEEKD:       equ 0bfe7h     ; SIO seek data byte
-DRV_CONFIG:      equ 0bfe8h     ; Drive config (density/sides/sector)
-DRV_PARAMS:      equ 0bfe9h     ; Drive parameter copy
-CUR_TRACK:       equ 0bfeah     ; Current track number
-SIDE_FLAG:       equ 0bfebh     ; Current side flag
-STEP_RATE:       equ 0bfech     ; Step rate / interleave
-FDC_SEEKBUF:     equ 0bfedh     ; FDC seek parameter buffer
-SIO_RXBUF:       equ 0bff0h     ; SIO receive buffer
-SIO_DONE:        equ 0bffbh     ; SIO completion flag
-SEC_SIZE:        equ 0bffch     ; Sector size (16-bit)
-PARAM_PTR:       equ 0bff9h     ; Pointer to drive param table
-DRV_TYPE:        equ 0bff8h     ; Drive type/density flags
-KEY_FLAG:        equ 0bffeh     ; Keyboard ready flag (0=none, 1=ready)
-KEY_DATA:        equ 0bfffh     ; Keyboard data byte
+STACK_TOP:          equ	0bed2h          ; Stack pointer init / boot cmd storage
+DMA_BUF:            equ	0bed3h          ; DMA transfer buffer (256 bytes)
+BUF_PTR:            equ	0bfd3h          ; Buffer read pointer
+BLOCK_CNT:          equ	0bfd5h          ; Block bytes remaining
+LOAD_ADDR:          equ	0bfd7h          ; Current load address
+FDC_CMD:            equ	0bfd9h          ; FDC command block (8 bytes)
+SEC_PER_TRK:        equ	0bfdch          ; Sectors per track
+FDC_PARAMS:         equ	0bfdfh          ; FDC working parameters
+TRK_CMP_0:          equ	0bfe1h          ; Track compare (side 0)
+TRK_CMP_1:          equ	0bfe3h          ; Track compare (side 1)
+SIO_CMD:            equ	0bfe5h          ; SIO command buffer
+SIO_SEEK:           equ	0bfe6h          ; SIO seek command area
+SIO_SEEKD:          equ	0bfe7h          ; SIO seek data byte
+DRV_CONFIG:         equ	0bfe8h          ; Drive config (density/sides/sector)
+DRV_PARAMS:         equ	0bfe9h          ; Drive parameter copy
+CUR_TRACK:          equ	0bfeah          ; Current track number
+SIDE_FLAG:          equ	0bfebh          ; Current side flag
+STEP_RATE:          equ	0bfech          ; Step rate / interleave
+FDC_SEEKBUF:        equ	0bfedh          ; FDC seek parameter buffer
+SIO_RXBUF:          equ	0bff0h          ; SIO receive buffer
+SIO_DONE:           equ	0bffbh          ; SIO completion flag
+SEC_SIZE:           equ	0bffch          ; Sector size (16-bit)
+PARAM_PTR:          equ	0bff9h          ; Pointer to drive param table
+DRV_TYPE:           equ	0bff8h          ; Drive type/density flags
+KEY_FLAG:           equ	0bffeh          ; Keyboard ready flag (0=none, 1=ready)
+KEY_DATA:           equ	0bfffh          ; Keyboard data byte
 
 ; --- Display memory equates ---
-SCREEN_BASE:     equ 0f2c6h     ; Start of character display buffer
-SCR_LIMIT:       equ 0ffe6h     ; End of display buffer
-SCR_START:       equ 0ffe8h     ; Scroll window start address
-SCR_END:         equ 0ffeah     ; Scroll window end address
-CUR_ADDR:        equ 0ffech     ; Cursor memory address
-CUR_COL:         equ 0ffeeh     ; Cursor column (0-79)
-CUR_LINE:        equ 0ffefh     ; Cursor line (0-27)
+SCREEN_BASE:        equ	0f2c6h          ; Start of character display buffer
+SCR_LIMIT:          equ	0ffe6h          ; End of display buffer
+SCR_START:          equ	0ffe8h          ; Scroll window start address
+SCR_END:            equ	0ffeah          ; Scroll window end address
+CUR_ADDR:           equ	0ffech          ; Cursor memory address
+CUR_COL:            equ	0ffeeh          ; Cursor column (0-79)
+CUR_LINE:           equ	0ffefh          ; Cursor line (0-27)
 
 
         org 00000h
@@ -190,384 +190,384 @@ CUR_LINE:        equ 0ffefh     ; Cursor line (0-27)
 ; RESET VECTOR (0000h) — Cold start entry point
 ; ==========================================================================
 reset:
-        jp cold_start
+        jp cold_start                   ; Skip to full init
 
 ; Warm restart entry (after DI)
-        di
+        di                              ; Already disabled by caller
 warm_entry:
-        jp warm_start
+        jp warm_start                   ; Reinit serial only
 
 ; ==========================================================================
 ; COLD START — Full hardware initialisation
 ; ==========================================================================
 cold_start:
-        ld sp,STACK_TOP                     ; Init stack
+        ld sp,STACK_TOP                 ; Init stack
 
         ; --- 8255 PPI initialisation ---
-        ld a,PPI_MODE_SET                   ; Mode set word:
-        out (PORT_PPI_CTRL),a               ;   Port A=input(mode1), B=input, Cupper=in
-        ld a,PPI_BSR_PC2                    ; BSR: set bit PC2 (strobe)
-        out (PORT_PPI_CTRL),a
-        ld a,PPI_BSR_PC4                    ; BSR: set bit PC4 (int enable)
-        out (PORT_PPI_CTRL),a
+        ld a,PPI_MODE_SET               ; Mode set word:
+        out (PORT_PPI_CTRL),a           ;   Port A=input(mode1), B=input, Cupper=in
+        ld a,PPI_BSR_PC2                ; BSR: set bit PC2 (strobe)
+        out (PORT_PPI_CTRL),a           ; Keyboard strobe active
+        ld a,PPI_BSR_PC4                ; BSR: set bit PC4 (int enable)
+        out (PORT_PPI_CTRL),a           ; Enable keyboard interrupt
 
         ; --- Clear keyboard flag ---
-        xor a
-        ld (KEY_FLAG),a
+        xor a                           ; A = 0
+        ld (KEY_FLAG),a                 ; No key pending
 
         ; --- Initialise display memory and CRT controller ---
-        call init_display_mem
-        call program_crtc
+        call init_display_mem           ; Fill screen with spaces
+        call program_crtc               ; Set up scroll registers
 
         ; --- Initialise cursor state ---
-        xor a
-        ld (CUR_COL),a                      ; Column = 0
-        ld a,SCR_LINES
-        ld (CUR_LINE),a                     ; Line = 27 (bottom)
+        xor a                           ; A = 0
+        ld (CUR_COL),a                  ; Column = 0
+        ld a,SCR_LINES                  ; 27
+        ld (CUR_LINE),a                 ; Line = 27 (bottom)
 
         ; --- Display controller setup ---
-        xor a
-        out (PORT_DISP_CMD),a               ; Reset display chip
-        ld hl,crt_init_data                 ; 5-byte timing table
-        ld b,5
+        xor a                           ; A = 0
+        out (PORT_DISP_CMD),a           ; Reset display chip
+        ld hl,crt_init_data             ; 5-byte timing table
+        ld b,5                          ; 5 parameters
 .crt_loop:
-        ld a,(hl)
-        out (PORT_DISP_DATA),a              ; Write param to display
-        inc hl
-        djnz .crt_loop
-        ld a,DISP_ENABLE
-        out (PORT_DISP_CMD),a               ; Enable display
-        ld a,DISP_MODE
-        out (PORT_DISP_CMD),a               ; Set display mode
-        ld a,DISP_START
-        out (PORT_DISP_CMD),a               ; Activate output
+        ld a,(hl)                       ; Next timing byte
+        out (PORT_DISP_DATA),a          ; Write param to display
+        inc hl                          ; Advance table pointer
+        djnz .crt_loop                  ; Loop all 5
+        ld a,DISP_ENABLE                ; Enable display output
+        out (PORT_DISP_CMD),a           ; Enable display
+        ld a,DISP_MODE                  ; Mode register
+        out (PORT_DISP_CMD),a           ; Set display mode
+        ld a,DISP_START                 ; Activate
+        out (PORT_DISP_CMD),a           ; Activate output
 
 ; ==========================================================================
 ; WARM START — Reinit serial + display (preserves PPI/CRT timing)
 ; ==========================================================================
 warm_start:
-        ld sp,STACK_TOP
-        call update_cursor
+        ld sp,STACK_TOP                 ; Reset stack
+        call update_cursor              ; Sync cursor to hardware
 
-        ld a,DISP_ON
-        out (PORT_DISP_CMD),a               ; Display ON
+        ld a,DISP_ON                    ; Switch on
+        out (PORT_DISP_CMD),a           ; Display ON
 
         ; --- SIO Channel A initialisation (10 register pairs) ---
-        xor a
-        out (PORT_SIO_A_CTRL),a             ; Reset register pointer
-        ld hl,sio_init_tbl
-        ld b,10
+        xor a                           ; A = 0
+        out (PORT_SIO_A_CTRL),a         ; Reset register pointer
+        ld hl,sio_init_tbl              ; Table of reg/val pairs
+        ld b,10                         ; 10 pairs to write
 .sio_loop:
-        ld a,(hl)
-        out (PORT_SIO_A_CTRL),a             ; Register addr/cmd
-        inc hl
-        ld a,(hl)
-        out (PORT_SIO_A_DATA),a             ; Register value
-        inc hl
-        djnz .sio_loop
+        ld a,(hl)                       ; Register address
+        out (PORT_SIO_A_CTRL),a         ; Select register
+        inc hl                          ; Point to value
+        ld a,(hl)                       ; Register value
+        out (PORT_SIO_A_DATA),a         ; Write it
+        inc hl                          ; Next pair
+        djnz .sio_loop                  ; Loop all 10
 
         ; --- SIO post-init commands ---
-        ld a,040h                           ; Reset RX CRC
-        out (PORT_SIO_A_CTRL),a
-        ld a,0a1h                           ; Enable INT on next RX
-        out (PORT_SIO_A_CTRL),a
+        ld a,040h                       ; Reset RX CRC
+        out (PORT_SIO_A_CTRL),a         ; Send to SIO
+        ld a,0a1h                       ; Enable INT on next RX
+        out (PORT_SIO_A_CTRL),a         ; Send to SIO
 
         ; --- Set up IM 2 interrupts ---
-        ld a,007h                           ; Vector page = 07xxh
-        ld i,a
-        im 2
+        ld a,007h                       ; Vector page = 07xxh
+        ld i,a                          ; Set interrupt vector base
+        im 2                            ; Vectored interrupt mode
 
         ; --- Final SIO config ---
-        ld a,02fh                           ; Reset TX INT pending
-        out (PORT_SIO_A_CTRL),a
-        ld a,02ch                           ; Reset TX INT pending
-        out (PORT_SIO_A_CTRL),a
-        ld a,020h                           ; Enable INT on next RX
-        out (PORT_SIO_A_CTRL),a
-        ei
+        ld a,02fh                       ; Reset TX INT pending
+        out (PORT_SIO_A_CTRL),a         ; Send to SIO
+        ld a,02ch                       ; Reset TX INT pending
+        out (PORT_SIO_A_CTRL),a         ; Send to SIO
+        ld a,020h                       ; Enable INT on next RX
+        out (PORT_SIO_A_CTRL),a         ; Send to SIO
+        ei                              ; Enable interrupts
 
 ; ==========================================================================
 ; COMMAND LOOP — Print prompt, parse commands
 ; ==========================================================================
 cmd_loop:
-        ld sp,STACK_TOP
-        ld hl,str_prompt
+        ld sp,STACK_TOP                 ; Reset stack on re-entry
+        ld hl,str_prompt                ; "\r\n BOSS .. "
 .print_loop:
-        ld c,(hl)
-        call putchar
-        inc hl
-        ld a,(hl)
-        or a
-        jp nz,.print_loop
+        ld c,(hl)                       ; Next char from string
+        call putchar                    ; Print it
+        inc hl                          ; Advance pointer
+        ld a,(hl)                       ; Peek next
+        or a                            ; NUL terminator?
+        jp nz,.print_loop               ; No — keep printing
 
         ; --- Read command ---
-        ld b,000h
-        call getchar_echo
-        ld a,c
-        cp CHAR_CR                          ; CR → floppy boot
-        jp z,cmd_boot
-        ex af,af'
-        ld c,':'                            ; Print ':'
-        call putchar
-        ex af,af'
-        cp '*'                              ; '*' → terminal mode
-        jp z,cmd_terminal
-        cp 'B'                              ; 'B' → serial boot
-        jp z,cmd_load
-        cp 'L'                              ; 'L' → floppy load
-        jp z,cmd_load
-        cp 'G'                              ; 'G' → go to address
-        jp z,cmd_go
+        ld b,0                          ; Clear digit count
+        call getchar_echo               ; Wait for keypress
+        ld a,c                          ; Command char
+        cp CHAR_CR                      ; CR → floppy boot
+        jp z,cmd_boot                   ; Auto-boot
+        ex af,af'                       ; Save command
+        ld c,':'                        ; Print ':'
+        call putchar                    ; Echo separator
+        ex af,af'                       ; Restore command
+        cp '*'                          ; '*' → terminal mode
+        jp z,cmd_terminal               ; Enter passthrough
+        cp 'B'                          ; 'B' → serial boot
+        jp z,cmd_load                   ; Serial binary load
+        cp 'L'                          ; 'L' → floppy load
+        jp z,cmd_load                   ; Floppy load
+        cp 'G'                          ; 'G' → go to address
+        jp z,cmd_go                     ; Jump to address
 
 cmd_error:
-        ld c,'#'                            ; Print '#' = error
-        call putchar
-        jp cmd_loop
+        ld c,'#'                        ; '#' = error indicator
+        call putchar                    ; Print error
+        jp cmd_loop                     ; Back to prompt
 
 ; ==========================================================================
 ; COMMAND: B/L — Load binary (serial or floppy)
 ; Syntax: B addr,size<CR> or L<CR>
 ; ==========================================================================
 cmd_load:
-        ex af,af'                           ; Recover command char
-        call parse_hex                      ; Parse address → DE
-        dec b
-        jp m,cmd_noaddr                     ; No digits: special case
-        ld a,c
-        cp ','                              ; Expect ','
-        jp nz,cmd_error
-        ld a,d                              ; Address high byte
-        or a
-        jp nz,cmd_error                     ; Must be 00xx
-        or e
-        cp MAX_DRIVES                       ; Max drive/unit = 3
-        jp nc,cmd_error
-        push af
-        call parse_hex                      ; Parse size
-        dec b
-        ld a,c
-        pop bc
-        jp m,cmd_error
-        cp CHAR_CR                          ; Must end with CR
-        jp nz,cmd_error
+        ex af,af'                       ; Recover command char
+        call parse_hex                  ; Parse address → DE
+        dec b                           ; Any digits parsed?
+        jp m,cmd_noaddr                 ; No digits: special case
+        ld a,c                          ; Terminator char
+        cp ','                          ; Expect ','
+        jp nz,cmd_error                 ; Bad separator
+        ld a,d                          ; Address high byte
+        or a                            ; Must be zero
+        jp nz,cmd_error                 ; Must be 00xx
+        or e                            ; Drive number in E
+        cp MAX_DRIVES                   ; Max drive/unit = 3
+        jp nc,cmd_error                 ; Too high
+        push af                         ; Save drive number
+        call parse_hex                  ; Parse size
+        dec b                           ; Any digits?
+        ld a,c                          ; Terminator
+        pop bc                          ; Recover drive in B
+        jp m,cmd_error                  ; No size given
+        cp CHAR_CR                      ; Must end with CR
+        jp nz,cmd_error                 ; Trailing garbage
 
 ; --- Common load entry (DE=size/address, AF'=command type) ---
 start_load:
-        ld (LOAD_ADDR),de
-        ex af,af'
-        ld (STACK_TOP),a                    ; Store command type
-        cp 'L'                              ; 'L' → floppy path
-        jp z,floppy_load
+        ld (LOAD_ADDR),de               ; Save load size
+        ex af,af'                       ; Get command type
+        ld (STACK_TOP),a                ; Store command type
+        cp 'L'                          ; 'L' → floppy path
+        jp z,floppy_load                ; Use FDC path
 
         ; --- Serial boot: drive select ---
-        ld a,SYS_DRV_SEL
-        out (PORT_SYS_CTRL),a
+        ld a,SYS_DRV_SEL                ; Select drive
+        out (PORT_SYS_CTRL),a           ; Enable drive controller
 
         ; --- Delay (device settle / motor spin-up) ---
-        ld de,084c6h
+        ld de,084c6h                    ; ~34000 iterations
 .delay:
-        ex (sp),hl                          ; Burn cycles
-        ex (sp),hl
-        dec de
-        ld a,e
-        or d
-        jp nz,.delay
+        ex (sp),hl                      ; Burn cycles (8T)
+        ex (sp),hl                      ; Burn cycles (8T)
+        dec de                          ; Count down
+        ld a,e                          ; Test DE == 0
+        or d                            ; (OR low and high)
+        jp nz,.delay                    ; Wait for motor
 
         ; --- Detect drive type from system config port ---
-        ld a,b
-        ld (DRV_PARAMS),a
-        in a,(PORT_SYS_CTRL)
-        ld c,a
-        and SYS_DENSITY                     ; Bit 7 = density
-        rrca
-        ld (DRV_TYPE),a
-        ld a,c
-        rlca
-        rlca
-        and SYS_TYPE_MASK                   ; Bits 7:6 → type 0-3
-        ld hl,drv_param_a
-        jp nz,.got_type
-        ld a,040h                           ; Type 0: special flag
-        ld (DRV_TYPE),a
-        jp .sel_params
+        ld a,b                          ; Drive number from cmd
+        ld (DRV_PARAMS),a               ; Store for later
+        in a,(PORT_SYS_CTRL)            ; Read system config
+        ld c,a                          ; Save full value
+        and SYS_DENSITY                 ; Bit 7 = density
+        rrca                            ; Shift to bit 6
+        ld (DRV_TYPE),a                 ; Save density flag
+        ld a,c                          ; Recover config
+        rlca                            ; Shift bits 7:6
+        rlca                            ;   into bits 1:0
+        and SYS_TYPE_MASK               ; Bits 7:6 → type 0-3
+        ld hl,drv_param_a               ; Default: type A
+        jp nz,.got_type                 ; Non-zero = valid type
+        ld a,040h                       ; Type 0: special flag
+        ld (DRV_TYPE),a                 ; Mark as special
+        jp .sel_params                  ; Use default params
 .got_type:
-        ld hl,drv_param_c
-        dec a
-        jp z,.sel_params
-        ld hl,drv_param_a
-        dec a
-        jp z,.sel_params
-        ld hl,drv_param_b
+        ld hl,drv_param_c               ; Try type C first
+        dec a                           ; Type 1?
+        jp z,.sel_params                ; Yes — use C
+        ld hl,drv_param_a               ; Try type A
+        dec a                           ; Type 2?
+        jp z,.sel_params                ; Yes — use A
+        ld hl,drv_param_b               ; Otherwise type B
 .sel_params:
-        ld (PARAM_PTR),hl
+        ld (PARAM_PTR),hl               ; Store selected table
 
         ; --- Build and send SIO command ---
-        ld de,SIO_CMD
-        ld a,003h
-        ld (de),a
-        inc de
-        ld c,002h
-        call memcopy
-        ld c,003h
-        ld hl,SIO_CMD
-        call sio_send_blk
+        ld de,SIO_CMD                   ; Command buffer
+        ld a,3                          ; Command byte count
+        ld (de),a                       ; Store length
+        inc de                          ; Point to payload
+        ld c,2                          ; Copy 2 bytes from table
+        call memcopy                    ; Param table → SIO_CMD
+        ld c,3                          ; 3 bytes to send
+        ld hl,SIO_CMD                   ; Point to buffer
+        call sio_send_blk               ; Send to SIO
 
         ; --- Init track limits ---
-        ld hl,0ffffh
-        ld (TRK_CMP_0),hl
-        ld (TRK_CMP_1),hl
+        ld hl,0ffffh                    ; -1 = never seeked
+        ld (TRK_CMP_0),hl               ; Side 0 uninit
+        ld (TRK_CMP_1),hl               ; Side 1 uninit
 
         ; --- Configure drive ---
-        ld hl,DRV_CONFIG
-        ld (hl),004h
-        ld c,002h
-        call sio_send_blk
-        call sio_read_stat
-        ld a,(hl)
-        and 008h                            ; Bit 3 = double sided?
-        rlca
-        rlca
-        rlca
-        rlca
-        ld hl,DRV_TYPE
-        or (hl)
-        or 006h
-        ld (DRV_CONFIG),a
+        ld hl,DRV_CONFIG                ; Config byte address
+        ld (hl),004h                    ; Init config command
+        ld c,2                          ; 2 bytes
+        call sio_send_blk               ; Send config request
+        call sio_read_stat              ; Read drive response
+        ld a,(hl)                       ; Status byte
+        and 008h                        ; Bit 3 = double sided?
+        rlca                            ; Shift bit 3
+        rlca                            ;   up to bit 7
+        rlca                            ;   ...
+        rlca                            ;   now in bit 7
+        ld hl,DRV_TYPE                  ; Drive type flags
+        or (hl)                         ; Merge with density
+        or 006h                         ; Set standard bits
+        ld (DRV_CONFIG),a               ; Final config byte
 
         ; --- Calculate sector size from param table ---
-        ld hl,(PARAM_PTR)
-        inc hl
-        inc hl
-        rlca
-        ld a,(hl)
-        jp nc,.no_dbl
-        rlca
+        ld hl,(PARAM_PTR)               ; Drive params base
+        inc hl                          ; Skip id byte 1
+        inc hl                          ; Skip id byte 2
+        rlca                            ; Config bit → carry
+        ld a,(hl)                       ; Base sector count
+        jp nc,.no_dbl                   ; No doubling needed
+        rlca                            ; Double if config set
 .no_dbl:
-        ld b,a
-        in a,(PORT_SYS_CTRL)
-        and SYS_BIT5
-        ld a,b
-        jp z,.no_shift
-        rlca
+        ld b,a                          ; Save interim value
+        in a,(PORT_SYS_CTRL)            ; Read system config
+        and SYS_BIT5                    ; Check bit 5
+        ld a,b                          ; Restore value
+        jp z,.no_shift                  ; Bit 5 clear: skip
+        rlca                            ; Double again for bit 5
 .no_shift:
-        ld b,a
-        inc hl
-        inc hl
-        ld a,(DRV_TYPE)
-        or a
-        ld a,(hl)
-        jp nz,.use_val
-        rrca
+        ld b,a                          ; B = sectors high
+        inc hl                          ; Skip to size field
+        inc hl                          ; ...
+        ld a,(DRV_TYPE)                 ; Check drive type
+        or a                            ; Type 0?
+        ld a,(hl)                       ; Raw size byte
+        jp nz,.use_val                  ; Non-zero type: use as-is
+        rrca                            ; Type 0: halve it
 .use_val:
-        ld l,a
-        ld h,b
-        ld (SEC_SIZE),hl
+        ld l,a                          ; L = size low
+        ld h,b                          ; H = size high
+        ld (SEC_SIZE),hl                ; Save computed sector size
 
 ; ==========================================================================
 ; SERIAL RECEIVE — Block-framed binary transfer protocol
 ; ==========================================================================
 serial_rx:
-        ld hl,0
-        ld (BLOCK_CNT),hl
+        ld hl,0                         ; Zero
+        ld (BLOCK_CNT),hl               ; No bytes buffered yet
 .next_rec:
-        call get_srx_byte
-        and a
-        jp z,cmd_error                      ; Zero type = error
-        ld c,a                              ; C = record type
-        call get_srx_byte                   ; Byte count
-        ld b,a
-        ld a,c
-        cp 003h                             ; Type ≥ 3: has address
-        jp c,.short_rec
-        call get_srx_byte                   ; Address high
-        ld h,a
-        call get_srx_byte                   ; Address low
-        ld l,a
-        call get_srx_byte                   ; Extra byte
+        call get_srx_byte               ; Record type byte
+        and a                           ; Test for zero
+        jp z,cmd_error                  ; Zero type = error
+        ld c,a                          ; C = record type
+        call get_srx_byte               ; Byte count
+        ld b,a                          ; B = payload length
+        ld a,c                          ; Recover type
+        cp 3                            ; Type ≥ 3: has address
+        jp c,.short_rec                 ; Short record: no addr
+        call get_srx_byte               ; Address high
+        ld h,a                          ; H = addr high
+        call get_srx_byte               ; Address low
+        ld l,a                          ; L = addr low
+        call get_srx_byte               ; Extra byte (ignored)
 .short_rec:
-        ld a,b
-        cp REC_DATA                         ; Data record
-        jp z,.data_rec
-        cp REC_ABORT                        ; Abort
-        jp z,cmd_error
-        cp REC_EXEC                         ; Execute record
-        jp z,.exec_rec
-        cp REC_SKIP_LO
-        jp c,cmd_error
-        cp REC_SKIP_HI
-        jp nc,cmd_error
+        ld a,b                          ; Record subtype byte
+        cp REC_DATA                     ; Data record
+        jp z,.data_rec                  ; Go store bytes
+        cp REC_ABORT                    ; Abort
+        jp z,cmd_error                  ; Fatal
+        cp REC_EXEC                     ; Execute record
+        jp z,.exec_rec                  ; Go launch program
+        cp REC_SKIP_LO                  ; Below skip range?
+        jp c,cmd_error                  ; Invalid type
+        cp REC_SKIP_HI                  ; Above skip range?
+        jp nc,cmd_error                 ; Invalid type
 .skip_rec:
-        call get_srx_byte                   ; Consume record
-        jp .skip_rec
+        call get_srx_byte               ; Consume record bytes
+        jp .skip_rec                    ; Until C exhausted
 
 .data_rec:
-        call get_srx_byte
-        ld (hl),a                           ; Store byte at address
-        inc hl
-        jp .data_rec
+        call get_srx_byte               ; Next data byte
+        ld (hl),a                       ; Store byte at address
+        inc hl                          ; Advance write pointer
+        jp .data_rec                    ; Until C exhausted
 
 .exec_rec:
-        di
-        push hl
-        push de
-        ld hl,relay_code                    ; Copy relay to RAM
-        ld de,DMA_BUF
-        ld bc,RELAY_LEN
-        ldir
-        pop de
-        pop hl                              ; HL = exec address
-        jp DMA_BUF                          ; Run relay
+        di                              ; Disable interrupts
+        push hl                         ; Save exec address
+        push de                         ; Save DE
+        ld hl,relay_code                ; Copy relay to RAM
+        ld de,DMA_BUF                   ; Destination in RAM
+        ld bc,RELAY_LEN                 ; 5 bytes
+        ldir                            ; Copy relay code
+        pop de                          ; Restore DE
+        pop hl                          ; HL = exec address
+        jp DMA_BUF                      ; Run relay from RAM
 
 ; --- Relay code (5 bytes, executes from RAM) ---
 relay_code:
-        ld a,SYS_BANKOUT                    ; Bank out ROM
-        out (PORT_SYS_CTRL),a
-        jp (hl)                             ; Jump to program
+        ld a,SYS_BANKOUT                ; Bank out ROM
+        out (PORT_SYS_CTRL),a           ; Map RAM at 0000h
+        jp (hl)                         ; Jump to program
 
 ; ==========================================================================
 ; get_srx_byte — Get one byte from serial receive buffer
 ; Replenishes buffer from SIO when empty. Adjusts C count.
 ; ==========================================================================
 get_srx_byte:
-        inc c
-        dec c                               ; Test C == 0
-        jp nz,.have_byte
-        pop af                              ; Pop caller return
-        inc c
-        jp .next_rec                        ; Restart record loop
+        inc c                           ; Test C without clobbering
+        dec c                           ; Test C == 0
+        jp nz,.have_byte                ; Bytes remain in record
+        pop af                          ; Pop caller return addr
+        inc c                           ; Reset count (non-zero)
+        jp .next_rec                    ; Restart record loop
 .have_byte:
-        push hl
-        ld hl,(BLOCK_CNT)
-        ld a,h
-        or l
-        jp nz,.from_buf
+        push hl                         ; Save caller's HL
+        ld hl,(BLOCK_CNT)               ; Bytes left in buffer
+        ld a,h                          ; Test if zero
+        or l                            ; HL == 0?
+        jp nz,.from_buf                 ; Still have data
         ; --- Refill buffer from disk/serial ---
-        push hl
-        push de
-        push bc
-        ld hl,(SEC_SIZE)
-        ex de,hl
-        ld hl,(LOAD_ADDR)
-        call do_sector_rw
-        ld (LOAD_ADDR),hl
-        pop bc
-        pop de
-        pop hl
-        ld hl,BUF_SIZE                      ; 255 bytes available
-        ld (BLOCK_CNT),hl
-        ld hl,DMA_BUF
-        jp .read_one
+        push hl                         ; Save regs
+        push de                         ; ...
+        push bc                         ; ...
+        ld hl,(SEC_SIZE)                ; Sector size
+        ex de,hl                        ; DE = sector size
+        ld hl,(LOAD_ADDR)               ; Current disk position
+        call do_sector_rw               ; Read next sector
+        ld (LOAD_ADDR),hl               ; Update position
+        pop bc                          ; Restore regs
+        pop de                          ; ...
+        pop hl                          ; ...
+        ld hl,BUF_SIZE                  ; 255 bytes available
+        ld (BLOCK_CNT),hl               ; Reset byte count
+        ld hl,DMA_BUF                   ; Point to buffer start
+        jp .read_one                    ; Read first byte
 .from_buf:
-        dec hl
-        ld (BLOCK_CNT),hl
-        ld hl,(BUF_PTR)
+        dec hl                          ; One fewer byte left
+        ld (BLOCK_CNT),hl               ; Update count
+        ld hl,(BUF_PTR)                 ; Current read position
 .read_one:
-        ld a,(hl)
-        inc hl
-        ld (BUF_PTR),hl
-        pop hl
-        dec c
-        ret
+        ld a,(hl)                       ; Read byte from buffer
+        inc hl                          ; Advance pointer
+        ld (BUF_PTR),hl                 ; Save new position
+        pop hl                          ; Restore caller's HL
+        dec c                           ; One fewer byte in record
+        ret                             ; Return byte in A
 
 ; ==========================================================================
 ; do_sector_rw — Read one sector (dispatches to serial or floppy)
@@ -575,868 +575,868 @@ get_srx_byte:
 ; Exit:  HL=next sector address
 ; ==========================================================================
 do_sector_rw:
-        ld a,(STACK_TOP)                    ; Check mode
-        cp 'L'                              ; 'L' = floppy
-        jp z,fdc_read_sector
+        ld a,(STACK_TOP)                ; Check mode
+        cp 'L'                          ; 'L' = floppy
+        jp z,fdc_read_sector            ; FDC path
 
         ; --- Serial/SIO path ---
-        push hl
-        push de
-        call divide_hl_e
-        ld a,(DRV_TYPE)
-        or a
-        ld a,b
-        jp nz,.not_t0
-        add a,a
+        push hl                         ; Save sector address
+        push de                         ; Save sector size
+        call divide_hl_e                ; HL/E → track/sector
+        ld a,(DRV_TYPE)                 ; Check drive type
+        or a                            ; Type 0?
+        ld a,b                          ; Remainder = sector
+        jp nz,.not_t0                   ; Non-zero: use as-is
+        add a,a                         ; Type 0: double sector#
 .not_t0:
-        inc a
-        ld (STEP_RATE),a
-        ld a,l
-        pop de
-        cp d
-        jp nc,cmd_error
+        inc a                           ; Sector 1-based
+        ld (STEP_RATE),a                ; Store sector number
+        ld a,l                          ; Track quotient
+        pop de                          ; Recover sector size
+        cp d                            ; Track < max?
+        jp nc,cmd_error                 ; Track overflow
 
         ; --- Side selection ---
-        ld a,(DRV_CONFIG)
-        rlca
-        ld b,000h
-        ld a,l
-        jp nc,.one_side
-        or a
-        rra
-        jp nc,.one_side
-        ld b,004h                           ; Side 1 flag
+        ld a,(DRV_CONFIG)               ; Drive config flags
+        rlca                            ; Bit 7 → carry (2-sided?)
+        ld b,0                          ; Default: side 0
+        ld a,l                          ; Track number
+        jp nc,.one_side                 ; Single-sided drive
+        or a                            ; Clear carry for RRA
+        rra                             ; Track/2, odd→carry
+        jp nc,.one_side                 ; Even track: side 0
+        ld b,004h                       ; Side 1 flag
 .one_side:
-        ld (CUR_TRACK),a
-        ld hl,DRV_PARAMS
-        ld a,(hl)
-        and 0fbh                            ; Clear side bit
-        or b
-        ld (hl),a
-        ld a,b
-        rrca
-        rrca
-        ld (SIDE_FLAG),a
+        ld (CUR_TRACK),a                ; Store physical track
+        ld hl,DRV_PARAMS                ; Drive params byte
+        ld a,(hl)                       ; Current value
+        and 0fbh                        ; Clear side bit
+        or b                            ; Set new side
+        ld (hl),a                       ; Update params
+        ld a,b                          ; Side flag
+        rrca                            ; Shift to bit 0
+        rrca                            ; (004h → 001h)
+        ld (SIDE_FLAG),a                ; Store for seek
 
         ; --- Copy params from table ---
-        ld hl,(PARAM_PTR)
-        inc hl
-        inc hl
-        inc hl
-        ld c,004h
-        ld de,FDC_SEEKBUF
-        call memcopy
+        ld hl,(PARAM_PTR)               ; Param table base
+        inc hl                          ; Skip byte 0
+        inc hl                          ; Skip byte 1
+        inc hl                          ; Skip byte 2
+        ld c,4                          ; 4 seek params
+        ld de,FDC_SEEKBUF               ; Destination
+        call memcopy                    ; Copy to work area
 
 ; --- DMA setup and sector transfer ---
 .do_dma:
-        ld a,0d3h                           ; DMA addr low (→BED3h)
-        di
-        out (PORT_DMA_ADDR),a
-        ld a,0beh                           ; DMA addr high
-        out (PORT_DMA_ADDR),a
-        ld a,0ffh                           ; DMA count low
-        out (PORT_DMA_COUNT),a
-        ld a,040h                           ; DMA count high
-        out (PORT_DMA_COUNT),a
-        ei
-        ld a,CRTC_START
-        out (PORT_CRTC_CMD),a               ; Start DMA
+        ld a,0d3h                       ; DMA addr low (→BED3h)
+        di                              ; Disable interrupts for DMA
+        out (PORT_DMA_ADDR),a           ; Set DMA address low
+        ld a,0beh                       ; DMA addr high
+        out (PORT_DMA_ADDR),a           ; Set DMA address high
+        ld a,0ffh                       ; DMA count low (255)
+        out (PORT_DMA_COUNT),a          ; Set transfer count low
+        ld a,040h                       ; DMA count high
+        out (PORT_DMA_COUNT),a          ; Set transfer count high
+        ei                              ; Re-enable interrupts
+        ld a,CRTC_START                 ; Trigger CRT DMA
+        out (PORT_CRTC_CMD),a           ; Start DMA
 
         ; --- Send seek + read command ---
-        call seek_track
-        ld c,009h                           ; 9-byte command
-        ld hl,DRV_CONFIG
-        call sio_send_wait
-        dec a
-        jp nz,.chk_err
-        pop hl                              ; Done: advance
-        inc hl
-        ret
+        call seek_track                 ; Move head to position
+        ld c,9                          ; 9-byte command block
+        ld hl,DRV_CONFIG                ; Config + command data
+        call sio_send_wait              ; Send and wait for reply
+        dec a                           ; 1 = success
+        jp nz,.chk_err                  ; Non-1: check error
+        pop hl                          ; Done: recover address
+        inc hl                          ; Next sector
+        ret                             ; Return to caller
 .chk_err:
-        ld a,(SIO_RXBUF+2)                  ; Error status
-        and 084h
-        jp z,.do_dma                        ; Retry if recoverable
-        call get_trk_cmp
-        ld (hl),0ffh                        ; Mark track failed
-        jp .do_dma                          ; Retry
+        ld a,(SIO_RXBUF+2)              ; Error status byte
+        and 084h                        ; Fatal error bits?
+        jp z,.do_dma                    ; Retry if recoverable
+        call get_trk_cmp                ; Get track compare ptr
+        ld (hl),0ffh                    ; Mark track failed
+        jp .do_dma                      ; Retry on next track
 
 ; ==========================================================================
 ; memcopy — Copy C bytes from (HL) to (DE)
 ; ==========================================================================
 memcopy:
-        ld a,(hl)
-        ld (de),a
-        inc hl
-        inc de
-        dec c
-        jp nz,memcopy
-        ret
+        ld a,(hl)                       ; Read source byte
+        ld (de),a                       ; Write to dest
+        inc hl                          ; Next source
+        inc de                          ; Next dest
+        dec c                           ; Count down
+        jp nz,memcopy                   ; Loop until done
+        ret                             ; Return
 
 ; ==========================================================================
 ; get_trk_cmp — Get pointer to track compare value for current side
 ; ==========================================================================
 get_trk_cmp:
-        ld a,(DRV_PARAMS)
-        and 003h
-        ld hl,TRK_CMP_0
+        ld a,(DRV_PARAMS)               ; Current drive params
+        and 003h                        ; Side bit → 0 or 2
+        ld hl,TRK_CMP_0                 ; Base of compare table
 add_a_to_hl:
-        add a,l
-        ld l,a
-        ret nc
-        inc h
-        ret
+        add a,l                         ; HL += A
+        ld l,a                          ; Update low byte
+        ret nc                          ; No carry: done
+        inc h                           ; Propagate carry
+        ret                             ; Return
 
 ; ==========================================================================
 ; divide_hl_e — Unsigned division: HL / E → HL quotient, B remainder
 ; ==========================================================================
 divide_hl_e:
-        xor a
-        ld d,010h                           ; 16 bits
+        xor a                           ; Clear accumulator
+        ld d,16                         ; 16 bits to process
 .div_loop:
-        add hl,hl
-        rla
-        jp c,.do_sub
-        cp e
-        jp c,.no_sub
+        add hl,hl                       ; Shift HL left (into A)
+        rla                             ; MSB of HL → A
+        jp c,.do_sub                    ; Overflow: must subtract
+        cp e                            ; A >= divisor?
+        jp c,.no_sub                    ; No: skip subtraction
 .do_sub:
-        inc l
-        sub e
+        inc l                           ; Set quotient bit
+        sub e                           ; A -= divisor
 .no_sub:
-        dec d
-        jp nz,.div_loop
-        ld b,a                              ; Remainder
-        ret
+        dec d                           ; Next bit
+        jp nz,.div_loop                 ; Loop all 16 bits
+        ld b,a                          ; Remainder in B
+        ret                             ; HL=quotient, B=remainder
 
 ; ==========================================================================
 ; seek_track — Seek FDC to correct track (with recalibrate if needed)
 ; ==========================================================================
 seek_track:
-        call get_trk_cmp
-        ld a,(hl)
-        inc a
-        jp z,.first_seek                    ; FF = never seeked
+        call get_trk_cmp                ; HL → track compare slot
+        ld a,(hl)                       ; Last position this side
+        inc a                           ; Was it FFh (uninit)?
+        jp z,.first_seek                ; FF = never seeked
 .chk_pos:
-        ld a,(CUR_TRACK)
-        cp (hl)                             ; Already there?
-        ret z
-        or a
-        ex de,hl
-        jp z,.recal                         ; Track 0 = recalibrate
+        ld a,(CUR_TRACK)                ; Desired track
+        cp (hl)                         ; Already there?
+        ret z                           ; Yes: nothing to do
+        or a                            ; Track 0?
+        ex de,hl                        ; DE = compare slot
+        jp z,.recal                     ; Track 0 = recalibrate
         ; --- Seek to non-zero track ---
-        ld hl,SIO_SEEKD
-        ld (hl),a                           ; Target track
-        ld b,FDC_SEEK                       ; Seek command
-        ld c,003h
+        ld hl,SIO_SEEKD                 ; Seek data buffer
+        ld (hl),a                       ; Target track number
+        ld b,FDC_SEEK                   ; Seek command code
+        ld c,3                          ; 3-byte command
 .exec_seek:
-        ld hl,SIO_SEEK
-        ld a,(DRV_PARAMS)
-        ld (hl),a                           ; Drive select
-        dec hl
-        ld (hl),b                           ; Command byte
-        call sio_send_wait
-        ld a,(CUR_TRACK)
-        ld (de),a                           ; Update position
-        ret
+        ld hl,SIO_SEEK                  ; Command buffer
+        ld a,(DRV_PARAMS)               ; Drive select byte
+        ld (hl),a                       ; Drive select param
+        dec hl                          ; Point to command byte
+        ld (hl),b                       ; Command byte
+        call sio_send_wait              ; Send and wait
+        ld a,(CUR_TRACK)                ; New position
+        ld (de),a                       ; Update compare slot
+        ret                             ; Done
 .first_seek:
-        ex de,hl
-        call .recal                         ; Recalibrate
-        ex de,hl
-        ld (hl),000h                        ; At track 0
-        jp .chk_pos                         ; Then seek target
+        ex de,hl                        ; DE = compare slot
+        call .recal                     ; Recalibrate first
+        ex de,hl                        ; HL = compare slot
+        ld (hl),0                       ; Record: at track 0
+        jp .chk_pos                     ; Now seek to target
 .recal:
-        ld b,FDC_RECAL                      ; Recal command
-        ld c,002h
-        call .exec_seek
-        ld a,(SIO_DONE)
-        dec a
-        ld a,000h
-        ret z
-        jp .recal                           ; Retry recal
+        ld b,FDC_RECAL                  ; Recal command code
+        ld c,2                          ; 2-byte command
+        call .exec_seek                 ; Send recal
+        ld a,(SIO_DONE)                 ; Completion status
+        dec a                           ; 1 = success
+        ld a,0                          ; Don't affect flags
+        ret z                           ; Success: done
+        jp .recal                       ; Retry recal
 
 ; ==========================================================================
 ; SIO RX INTERRUPT HANDLER (vector F4 → 032Ch)
 ; ==========================================================================
 sio_rx_isr:
-        push af
-        ld a,03ah                           ; RETI to SIO
-        out (PORT_SIO_A_CTRL),a
-        ei
-        push bc
-        push hl
+        push af                         ; Save A
+        ld a,03ah                       ; RETI acknowledge
+        out (PORT_SIO_A_CTRL),a         ; Tell SIO we're handling it
+        ei                              ; Re-enable interrupts
+        push bc                         ; Save BC
+        push hl                         ; Save HL
 .rx_loop:
-        call sio_read_stat
-        ld a,b
-        and a
-        jp z,.rx_ack                        ; No data: send ACK
-        ld hl,SIO_RXBUF+1
-        ld a,(hl)
-        rlca
-        jp c,.rx_err                        ; Bit 7 set: error
-        rlca
-        jp c,.rx_err                        ; Bit 6 set: error
-        ld a,001h                           ; Normal completion
+        call sio_read_stat              ; Poll for data
+        ld a,b                          ; Byte count received
+        and a                           ; Any data?
+        jp z,.rx_ack                    ; No data: send ACK
+        ld hl,SIO_RXBUF+1               ; Point to status byte
+        ld a,(hl)                       ; Read status
+        rlca                            ; Bit 7 → carry
+        jp c,.rx_err                    ; Bit 7 set: error
+        rlca                            ; Bit 6 → carry
+        jp c,.rx_err                    ; Bit 6 set: error
+        ld a,1                          ; Normal completion
 .rx_done:
-        ld (SIO_DONE),a
-        pop hl
-        pop bc
-        pop af
-        ret
+        ld (SIO_DONE),a                 ; Signal completion
+        pop hl                          ; Restore HL
+        pop bc                          ; Restore BC
+        pop af                          ; Restore A
+        ret                             ; Return from ISR
 .rx_err:
-        ld a,07fh                           ; Error flag
-        jp .rx_done
+        ld a,07fh                       ; Error flag
+        jp .rx_done                     ; Signal error
 .rx_ack:
-        ld hl,SIO_CMD
-        ld (hl),008h                        ; ACK command
-        ld c,001h
-        call sio_tx_wait
-        jp .rx_loop
+        ld hl,SIO_CMD                   ; Command buffer
+        ld (hl),008h                    ; ACK command byte
+        ld c,1                          ; 1 byte to send
+        call sio_tx_wait                ; Send ACK
+        jp .rx_loop                     ; Continue polling
 
 ; ==========================================================================
 ; sio_read_stat — Read status/data bytes from SIO Channel B
 ; Exit: B = byte count received, data at SIO_RXBUF+
 ; ==========================================================================
 sio_read_stat:
-        ld hl,SIO_RXBUF
-        ld b,000h
+        ld hl,SIO_RXBUF                 ; Buffer start
+        ld b,0                          ; Clear byte count
 .poll:
-        in a,(PORT_SIO_B_CTRL)
-        rlca                                ; Bit 7 → carry
-        jp nc,.poll                         ; Wait for ready
-        ld c,a
-        and 020h                            ; Check data avail
-        ret z                               ; None: return
-        ld a,c
-        rlca
-        jp nc,.poll
-        in a,(PORT_SIO_B_DATA)              ; Read byte
-        inc hl
-        inc b
-        ld (hl),a
-        jp .poll
+        in a,(PORT_SIO_B_CTRL)          ; Read SIO status
+        rlca                            ; Bit 7 → carry
+        jp nc,.poll                     ; Wait for ready
+        ld c,a                          ; Save status
+        and 020h                        ; Check data avail bit
+        ret z                           ; No data: return
+        ld a,c                          ; Recover status
+        rlca                            ; Check another bit
+        jp nc,.poll                     ; Not valid yet
+        in a,(PORT_SIO_B_DATA)          ; Read data byte
+        inc hl                          ; Advance buffer pointer
+        inc b                           ; Count bytes
+        ld (hl),a                       ; Store in buffer
+        jp .poll                        ; Check for more
 
 ; ==========================================================================
 ; sio_tx_wait — Wait for TX buffer empty, then send
 ; ==========================================================================
 sio_tx_wait:
-        in a,(PORT_SIO_B_CTRL)
-        and 010h
-        jp nz,sio_tx_wait
+        in a,(PORT_SIO_B_CTRL)          ; Read SIO status
+        and 010h                        ; TX buffer empty?
+        jp nz,sio_tx_wait               ; Wait until clear
 
 ; ==========================================================================
 ; sio_send_blk — Send C bytes from (HL) to SIO Channel B
 ; ==========================================================================
 sio_send_blk:
-        in a,(PORT_SIO_B_CTRL)
-        rlca
-        jp nc,sio_send_blk
-        rlca
-        jp c,sio_send_blk
-        ld a,(hl)
-        out (PORT_SIO_B_DATA),a
-        inc hl
-        dec c
-        jp nz,sio_send_blk
-        ret
+        in a,(PORT_SIO_B_CTRL)          ; SIO status
+        rlca                            ; Check ready bit
+        jp nc,sio_send_blk              ; Wait for ready
+        rlca                            ; Check busy bit
+        jp c,sio_send_blk               ; Wait for not busy
+        ld a,(hl)                       ; Get byte to send
+        out (PORT_SIO_B_DATA),a         ; Transmit byte
+        inc hl                          ; Next source byte
+        dec c                           ; Count down
+        jp nz,sio_send_blk              ; Loop until all sent
+        ret                             ; Done
 
 ; ==========================================================================
 ; sio_send_wait — Send block and wait for ISR completion
 ; ==========================================================================
 sio_send_wait:
-        call sio_tx_wait
-        xor a
-        ld (SIO_DONE),a                     ; Clear flag
-        di
-        ld a,02ah                           ; Reset TX INT
-        out (PORT_SIO_A_CTRL),a
-        ei
+        call sio_tx_wait                ; Wait TX ready
+        xor a                           ; A = 0
+        ld (SIO_DONE),a                 ; Clear completion flag
+        di                              ; Critical section
+        ld a,02ah                       ; Reset TX INT
+        out (PORT_SIO_A_CTRL),a         ; Enable TX interrupt
+        ei                              ; End critical section
 .wait:
-        ld a,(SIO_DONE)
-        or a
-        jp z,.wait
-        ret
+        ld a,(SIO_DONE)                 ; Poll completion flag
+        or a                            ; Set yet?
+        jp z,.wait                      ; No: keep waiting
+        ret                             ; Done, status in A
 
 ; ==========================================================================
 ; parse_hex — Read hex digits, build 16-bit value in DE
 ; Exit: DE=value, B=digit count, C=terminating char
 ; ==========================================================================
 parse_hex:
-        ld de,0
-        ld b,e
+        ld de,0                         ; Result = 0
+        ld b,e                          ; Digit count = 0
 .next:
-        call getchar_echo
-        ld a,c
-        sub '0'                             ; '0'
-        cp 10
-        jp c,.digit                         ; 0-9
-        cp 17
-        ret c                               ; Non-hex: return
-        sub 7                               ; 'A'-'F' → 10-15
+        call getchar_echo               ; Get next char
+        ld a,c                          ; A = char
+        sub '0'                         ; Convert from ASCII
+        cp 10                           ; Digit 0-9?
+        jp c,.digit                     ; Yes: use directly
+        cp 17                           ; Gap between '9' and 'A'
+        ret c                           ; Non-hex char: done
+        sub 7                           ; 'A'-'F' → 10-15
 .digit:
-        cp 16
-        ccf
-        ret c                               ; >15: return
-        inc b
-        ld l,a
-        ld h,000h
-        ld a,010h                           ; Multiply DE × 16
+        cp 16                           ; Valid nybble?
+        ccf                             ; Invert carry
+        ret c                           ; >15: done
+        inc b                           ; Count digit
+        ld l,a                          ; Digit value in L
+        ld h,0                          ; HL = digit (0-15)
+        ld a,16                         ; 16 iterations
 .mul16:
-        add hl,de
-        jp c,cmd_error                      ; Overflow
-        dec a
-        jp nz,.mul16
-        ex de,hl
-        jp .next
+        add hl,de                       ; HL += DE (old value)
+        jp c,cmd_error                  ; Overflow: error
+        dec a                           ; Loop counter
+        jp nz,.mul16                    ; DE*16 by repeated add
+        ex de,hl                        ; DE = new accumulated val
+        jp .next                        ; Next digit
 
 ; ==========================================================================
 ; INTERRUPT STUBS
 ; ==========================================================================
 isr_stub:
-        ei
-        ret
+        ei                              ; Re-enable interrupts
+        ret                             ; Return (do nothing)
 
 isr_sio_err:
-        ei
-        push af
-        ld a,07fh                           ; SIO RETI command
-        out (PORT_SIO_A_CTRL),a
-        pop af
-        ret
+        ei                              ; Re-enable interrupts
+        push af                         ; Save A
+        ld a,07fh                       ; SIO error acknowledge
+        out (PORT_SIO_A_CTRL),a         ; Clear error condition
+        pop af                          ; Restore A
+        ret                             ; Return
 
 ; ==========================================================================
 ; COMMAND: L (floppy-only path) — Floppy disk load
 ; ==========================================================================
 floppy_load:
-        dec b
-        jp p,cmd_error
-        out (PORT_FDC_CTRL),a               ; FDC mode select
+        dec b                           ; Any digits parsed?
+        jp p,cmd_error                  ; Should have none
+        out (PORT_FDC_CTRL),a           ; FDC mode select
         ; --- Init FDC command block ---
-        ld hl,FDC_CMD
-        ld (hl),001h                        ; Track = 1
-        inc hl
-        ld (hl),001h                        ; Sector = 1
-        inc hl
-        xor a
-        ld (hl),a                           ; Head = 0
-        ld hl,FDC_PARAMS
-        ld (hl),a
-        inc hl
-        ld (hl),a
+        ld hl,FDC_CMD                   ; Command buffer
+        ld (hl),1                       ; Track = 1
+        inc hl                          ; Next field
+        ld (hl),1                       ; Sector = 1
+        inc hl                          ; Next field
+        xor a                           ; A = 0
+        ld (hl),a                       ; Head = 0
+        ld hl,FDC_PARAMS                ; Working params
+        ld (hl),a                       ; Clear param 0
+        inc hl                          ; Next byte
+        ld (hl),a                       ; Clear param 1
         ; --- Compute sectors from size ---
-        ex de,hl
-        ld de,SEC_128                       ; 128-byte sectors
-        add hl,de                           ; Round up
-        ld e,SEC_PER_TRK_MAX                ; 32 sectors/track
-        call divide_hl_e
-        ex de,hl
-        ld hl,FDC_CMD+4
-        ld (hl),b
-        inc hl
-        ld a,e
-        and 003h
-        ld (hl),a
-        ex de,hl
-        ld de,00004h
-        call divide_hl_e
-        ld a,h
-        or a
-        jp nz,cmd_error
-        or l
-        ld (SEC_PER_TRK),a
+        ex de,hl                        ; HL = load size (from DE)
+        ld de,SEC_128                   ; 128-byte sectors
+        add hl,de                       ; Round up (size+128)
+        ld e,SEC_PER_TRK_MAX            ; 32 sectors/track
+        call divide_hl_e                ; HL=tracks, B=sectors
+        ex de,hl                        ; DE = track count
+        ld hl,FDC_CMD+4                 ; Sector count field
+        ld (hl),b                       ; Store remainder
+        inc hl                          ; Next field
+        ld a,e                          ; Track low bits
+        and 003h                        ; Mask 2 bits
+        ld (hl),a                       ; Store track extra
+        ex de,hl                        ; HL = track count
+        ld de,00004h                    ; 4 sides×heads
+        call divide_hl_e                ; HL = cylinder count
+        ld a,h                          ; High byte
+        or a                            ; Should be 0
+        jp nz,cmd_error                 ; Too many tracks
+        or l                            ; Sectors per track
+        ld (SEC_PER_TRK),a              ; Store spt
         ; --- Recalibrate and format/setup ---
-        call fdc_recal
-        jp nz,cmd_error
-        call fdc_prep
-        ld hl,fdc_cmd_read
-        call fdc_send_cmd
-        ld c,FDC_STAT_DRQ+FDC_STAT_RDY      ; Wait for DRQ+RDY
-        call fdc_wait_stat
-        and FDC_STAT_RDY
-        jp nz,.fmt_ok
-        ld hl,intrlv_tbl
-        ld b,SEC_PER_TRK_MAX
-        call fdc_send_data
+        call fdc_recal                  ; Home the head
+        jp nz,cmd_error                 ; Recal failed
+        call fdc_prep                   ; Prepare FDC
+        ld hl,fdc_cmd_read              ; Read command
+        call fdc_send_cmd               ; Send to FDC
+        ld c,FDC_STAT_DRQ+FDC_STAT_RDY  ; Wait for DRQ+RDY
+        call fdc_wait_stat              ; Poll status
+        and FDC_STAT_RDY                ; Ready bit set?
+        jp nz,.fmt_ok                   ; Already formatted
+        ld hl,intrlv_tbl                ; Interleave table
+        ld b,SEC_PER_TRK_MAX            ; 32 sector IDs
+        call fdc_send_data              ; Write interleave
 .fmt_ok:
-        call fdc_result
-        jp nz,cmd_error
-        jp serial_rx                        ; Start reading
+        call fdc_result                 ; Get status
+        jp nz,cmd_error                 ; Failed
+        jp serial_rx                    ; Start reading data
 
 ; ==========================================================================
 ; fdc_read_sector — Read one sector from FDC (floppy-mode path)
 ; Entry: HL on stack (load address)
 ; ==========================================================================
 fdc_read_sector:
-        push hl
+        push hl                         ; Save load address
 .retry:
-        call fdc_do_read
-        jp nz,.retry
+        call fdc_do_read                ; Attempt sector read
+        jp nz,.retry                    ; Retry on error
         ; --- Advance sector/head/track ---
-        ld hl,FDC_CMD+5
-        inc (hl)                            ; Next sector
-        ld a,01fh
-        cp (hl)
-        jp nc,.sec_ok
-        ld (hl),000h                        ; Wrap sector
-        dec hl
-        inc (hl)                            ; Next head
-        ld a,003h
-        cp (hl)
-        jp nc,.sec_ok
-        ld (hl),000h                        ; Wrap head
-        dec hl
-        inc (hl)                            ; Next track
+        ld hl,FDC_CMD+5                 ; Sector number field
+        inc (hl)                        ; Next sector
+        ld a,31                         ; Max sector
+        cp (hl)                         ; Overflow?
+        jp nc,.sec_ok                   ; No: keep going
+        ld (hl),0                       ; Wrap sector to 0
+        dec hl                          ; Head field
+        inc (hl)                        ; Next head
+        ld a,3                          ; Max head
+        cp (hl)                         ; Overflow?
+        jp nc,.sec_ok                   ; No: keep going
+        ld (hl),0                       ; Wrap head to 0
+        dec hl                          ; Track field
+        inc (hl)                        ; Next track
 .sec_ok:
-        pop hl
-        inc hl
-        ret
+        pop hl                          ; Restore load address
+        inc hl                          ; Advance to next
+        ret                             ; Return
 
 ; ==========================================================================
 ; fdc_do_read — Execute single sector read from FDC
 ; Exit: Z=success, NZ=error (A=error code)
 ; ==========================================================================
 fdc_do_read:
-        call fdc_prep
-        ld hl,FDC_CMD
-        call fdc_send_cmd
+        call fdc_prep                   ; Prepare controller
+        ld hl,FDC_CMD                   ; Command block
+        call fdc_send_cmd               ; Send read command
 .wait_rdy:
-        ld c,FDC_STAT_BUSY
-        call fdc_wait_stat
-        and FDC_STAT_RDY
-        jp nz,.wait_rdy
+        ld c,FDC_STAT_BUSY              ; Wait for not-busy
+        call fdc_wait_stat              ; Poll FDC
+        and FDC_STAT_RDY                ; Check ready bit
+        jp nz,.wait_rdy                 ; Not ready: keep waiting
         ; --- Read 256 bytes ---
-        ld hl,DMA_BUF
-        ld b,000h                           ; 256 iterations
+        ld hl,DMA_BUF                   ; Destination buffer
+        ld b,0                          ; 256 iterations (0 wraps)
 .rd_byte:
-        in a,(PORT_FDC_DATA)
-        cpl                                 ; Active-low invert
-        ld (hl),a
-        inc hl
-        djnz .rd_byte
+        in a,(PORT_FDC_DATA)            ; Read raw byte
+        cpl                             ; Active-low invert
+        ld (hl),a                       ; Store in buffer
+        inc hl                          ; Next position
+        djnz .rd_byte                   ; Loop 256 times
         ; --- Check result ---
-        call fdc_result
-        ret z                               ; Success
-        push af
-        cp 008h
-        jp z,.needs_recal
-        cp 003h
-        jp nc,.maybe_retry
+        call fdc_result                 ; Get completion status
+        ret z                           ; Success: return Z
+        push af                         ; Save error code
+        cp 8                            ; Error 8: need recal?
+        jp z,.needs_recal               ; Yes
+        cp 3                            ; Error >= 3?
+        jp nc,.maybe_retry              ; Maybe retryable
 .ret_err:
-        pop af
-        ret
+        pop af                          ; Restore error code
+        ret                             ; Return NZ (error)
 .maybe_retry:
-        cp 006h
-        jp nc,.ret_err
+        cp 6                            ; Error >= 6?
+        jp nc,.ret_err                  ; Fatal: don't retry
 .needs_recal:
-        call fdc_recal
-        pop af
-        ret
+        call fdc_recal                  ; Recalibrate head
+        pop af                          ; Restore error code
+        ret                             ; Return NZ (will retry)
 
 ; ==========================================================================
 ; fdc_recal — Send recalibrate command to FDC
 ; ==========================================================================
 fdc_recal:
-        call fdc_prep
-        ld hl,fdc_cmd_recal
-        call fdc_send_cmd
-        ld c,FDC_STAT_RDY
-        call fdc_wait_stat
+        call fdc_prep                   ; Prepare controller
+        ld hl,fdc_cmd_recal             ; Recal command
+        call fdc_send_cmd               ; Send to FDC
+        ld c,FDC_STAT_RDY               ; Wait for completion
+        call fdc_wait_stat              ; Poll until ready
 
 ; ==========================================================================
 ; fdc_result — Send "sense" command and read result byte
 ; Exit: A=status, Z=success
 ; ==========================================================================
 fdc_result:
-        call fdc_prep
-        ld hl,fdc_cmd_sense
-        call fdc_send_cmd
-        ld c,FDC_STAT_BUSY
-        call fdc_wait_stat
-        and FDC_STAT_RDY
-        jp nz,cmd_error
-        in a,(PORT_FDC_DATA)
-        cpl                                 ; Active-low invert
-        or a                                ; Z if success
-        ret
+        call fdc_prep                   ; Prepare controller
+        ld hl,fdc_cmd_sense             ; Sense interrupt cmd
+        call fdc_send_cmd               ; Send to FDC
+        ld c,FDC_STAT_BUSY              ; Wait not-busy + DRQ
+        call fdc_wait_stat              ; Poll status
+        and FDC_STAT_RDY                ; Data ready?
+        jp nz,cmd_error                 ; No: fatal error
+        in a,(PORT_FDC_DATA)            ; Read result byte
+        cpl                             ; Active-low invert
+        or a                            ; Z if success (0)
+        ret                             ; Return status
 
 ; ==========================================================================
 ; fdc_prep — Prepare FDC (wait ready, toggle chip select)
 ; ==========================================================================
 fdc_prep:
-        ld c,FDC_STAT_RDY
-        call fdc_wait_stat
-        cpl
-        out (PORT_FDC_STAT),a
-        ld c,FDC_STAT_DRQ
+        ld c,FDC_STAT_RDY               ; Wait for ready
+        call fdc_wait_stat              ; Poll until set
+        cpl                             ; Invert for active-low
+        out (PORT_FDC_STAT),a           ; Toggle chip select
+        ld c,FDC_STAT_DRQ               ; Now wait for DRQ
 
 ; ==========================================================================
 ; fdc_wait_stat — Wait for FDC status bits in C (active-low)
 ; ==========================================================================
 fdc_wait_stat:
-        in a,(PORT_FDC_STAT)
-        cpl
-        and c
-        ret nz
-        jp fdc_wait_stat
+        in a,(PORT_FDC_STAT)            ; Read FDC status
+        cpl                             ; Invert (active-low)
+        and c                           ; Test required bits
+        ret nz                          ; Set: return
+        jp fdc_wait_stat                ; Loop until set
 
 ; ==========================================================================
 ; fdc_send_cmd — Send 8 bytes from (HL) to FDC data port
 ; ==========================================================================
 fdc_send_cmd:
-        ld b,FDC_CMD_LEN
+        ld b,FDC_CMD_LEN                ; 8 bytes
 
 ; ==========================================================================
 ; fdc_send_data — Send B bytes from (HL) to FDC (with inversion)
 ; ==========================================================================
 fdc_send_data:
-        ld a,(hl)
-        cpl                                 ; Active-low invert
-        out (PORT_FDC_DATA),a
-        inc hl
-        djnz fdc_send_data
-        ret
+        ld a,(hl)                       ; Get byte
+        cpl                             ; Active-low invert
+        out (PORT_FDC_DATA),a           ; Write to FDC
+        inc hl                          ; Next byte
+        djnz fdc_send_data              ; Loop B times
+        ret                             ; Done
 
 ; ==========================================================================
 ; COMMAND: * — Terminal mode (echo until ESC)
 ; ==========================================================================
 cmd_terminal:
-        call kbd_getchar
-        cp CHAR_ESC                         ; ESC?
-        jp z,cmd_loop
-        ld c,a
-        call putchar
-        jp cmd_terminal
+        call kbd_getchar                ; Wait for keypress
+        cp CHAR_ESC                     ; ESC pressed?
+        jp z,cmd_loop                   ; Yes: exit to prompt
+        ld c,a                          ; Char in C for putchar
+        call putchar                    ; Echo to display
+        jp cmd_terminal                 ; Loop forever
 
 ; ==========================================================================
 ; COMMAND: CR — Auto-detect boot from floppy
 ; ==========================================================================
 cmd_boot:
-        ld hl,SEC_128                       ; 128-byte sector
-        in a,(PORT_SYS_CTRL)
-        and SYS_TYPE_BITS                   ; Drive type bits
-        ld a,'B'                            ; 'B' = serial
-        jp nz,.set_type                     ; Non-zero = serial
-        ld a,'L'                            ; 'L' = floppy
-        add hl,hl                           ; Double sector size
+        ld hl,SEC_128                   ; 128-byte sector size
+        in a,(PORT_SYS_CTRL)            ; Read system config
+        and SYS_TYPE_BITS               ; Drive type bits
+        ld a,'B'                        ; Assume serial boot
+        jp nz,.set_type                 ; Non-zero = serial
+        ld a,'L'                        ; Zero = floppy
+        add hl,hl                       ; Floppy: 256-byte sectors
 .set_type:
-        ex de,hl
-        ex af,af'
-        jp start_load
+        ex de,hl                        ; DE = sector size
+        ex af,af'                       ; Save boot type
+        jp start_load                   ; Begin loading
 
 ; ==========================================================================
 ; cmd_noaddr — Handle B/L with no address (immediate CR)
 ; ==========================================================================
 cmd_noaddr:
-        ld a,c
-        cp CHAR_CR
-        jp nz,cmd_error
-        ld b,000h
-        ld de,00001h
-        jp start_load
+        ld a,c                          ; Terminator char
+        cp CHAR_CR                      ; Must be CR
+        jp nz,cmd_error                 ; Otherwise error
+        ld b,0                          ; No drive number
+        ld de,1                         ; Default size = 1
+        jp start_load                   ; Begin loading
 
 ; ==========================================================================
 ; COMMAND: G addr — Jump to address (with ROM bank-out)
 ; ==========================================================================
 cmd_go:
-        call parse_hex
-        dec b
-        jp m,cmd_error
-        ld a,c
-        cp CHAR_CR
-        jp nz,cmd_error
-        ex de,hl                            ; HL = target addr
-        di
-        ld a,0ffh
-        ld i,a                              ; Vectors → FFxxh (RAM)
-        im 2
-        jp .exec_rec                        ; Bank out + jump
+        call parse_hex                  ; Parse target address
+        dec b                           ; Any digits?
+        jp m,cmd_error                  ; None: error
+        ld a,c                          ; Terminator char
+        cp CHAR_CR                      ; Must be CR
+        jp nz,cmd_error                 ; Otherwise error
+        ex de,hl                        ; HL = target addr
+        di                              ; Disable interrupts
+        ld a,0ffh                       ; Vector page FFh
+        ld i,a                          ; Vectors → FFxxh (RAM)
+        im 2                            ; Keep IM 2 mode
+        jp .exec_rec                    ; Bank out + jump
 
 ; ==========================================================================
 ; kbd_getchar — Wait for keyboard input (blocking poll)
 ; Returns char in A (7-bit ASCII)
 ; ==========================================================================
 kbd_getchar:
-        ld a,(KEY_FLAG)
-        or a
-        jp z,kbd_getchar
-        xor a
-        ld (KEY_FLAG),a                     ; Clear flag
-        ld a,(KEY_DATA)
-        and 07fh                            ; 7-bit ASCII
-        ret
+        ld a,(KEY_FLAG)                 ; Check key ready
+        or a                            ; Flag set?
+        jp z,kbd_getchar                ; No: keep polling
+        xor a                           ; A = 0
+        ld (KEY_FLAG),a                 ; Clear flag
+        ld a,(KEY_DATA)                 ; Get key code
+        and 07fh                        ; 7-bit ASCII
+        ret                             ; Return char in A
 
 ; ==========================================================================
 ; KEYBOARD ISR (vector F8 → 053Fh)
 ; ==========================================================================
 kbd_isr:
-        ei
-        push af
-        in a,(PORT_PPI_A)                   ; Read keyboard
-        cpl                                 ; Invert (active-low)
-        ld (KEY_DATA),a
-        ld a,001h
-        ld (KEY_FLAG),a                     ; Signal ready
-        pop af
-        ret
+        ei                              ; Re-enable interrupts
+        push af                         ; Save A
+        in a,(PORT_PPI_A)               ; Read keyboard port
+        cpl                             ; Invert (active-low)
+        ld (KEY_DATA),a                 ; Store key code
+        ld a,1                          ; Flag = ready
+        ld (KEY_FLAG),a                 ; Signal ready
+        pop af                          ; Restore A
+        ret                             ; Return from ISR
 
 ; ==========================================================================
 ; getchar_echo — Get char from keyboard, echo to display
 ; Returns char in C
 ; ==========================================================================
 getchar_echo:
-        call kbd_getchar
-        ld c,a
+        call kbd_getchar                ; Wait for keypress
+        ld c,a                          ; C = char (for putchar)
 
 ; ==========================================================================
 ; putchar — Output character C to display
 ; Handles CR (0Dh) and LF (0Ah) specially
 ; ==========================================================================
 putchar:
-        push bc
-        push de
-        push hl
-        ld a,c
-        cp CHAR_CR                          ; CR?
-        jp z,.do_cr
-        cp CHAR_LF                          ; LF?
-        jp z,.do_lf
+        push bc                         ; Save registers
+        push de                         ; ...
+        push hl                         ; ...
+        ld a,c                          ; Get character
+        cp CHAR_CR                      ; CR?
+        jp z,.do_cr                     ; Handle carriage return
+        cp CHAR_LF                      ; LF?
+        jp z,.do_lf                     ; Handle line feed
         ; --- Normal character ---
-        ld hl,(CUR_ADDR)
-        ld (hl),c                           ; Store in display mem
-        call advance_cur
+        ld hl,(CUR_ADDR)                ; Current screen position
+        ld (hl),c                       ; Store char in display
+        call advance_cur                ; Move cursor right
 .done:
-        pop hl
-        pop de
-        pop bc
-        ret
+        pop hl                          ; Restore registers
+        pop de                          ; ...
+        pop bc                          ; ...
+        ret                             ; Return
 .do_lf:
-        call scroll_line
-        jp .done
+        call scroll_line                ; Advance line
+        jp .done                        ; Done
 .do_cr:
-        call carriage_ret
-        ld (CUR_ADDR),hl
-        call update_cursor
-        jp .done
+        call carriage_ret               ; Move to column 0
+        ld (CUR_ADDR),hl                ; Update cursor address
+        call update_cursor              ; Sync to hardware
+        jp .done                        ; Done
 
 ; ==========================================================================
 ; carriage_ret — Move cursor to column 0 of current line
 ; ==========================================================================
 carriage_ret:
-        ld hl,(CUR_ADDR)
-        ld a,(CUR_COL)
-        call sub_hl_a
-        xor a
-        ld (CUR_COL),a
-        ret
+        ld hl,(CUR_ADDR)                ; Current position
+        ld a,(CUR_COL)                  ; Current column
+        call sub_hl_a                   ; HL -= column offset
+        xor a                           ; A = 0
+        ld (CUR_COL),a                  ; Column = 0
+        ret                             ; HL = line start
 
 ; ==========================================================================
 ; advance_cur — Move cursor right, wrap at column 79
 ; ==========================================================================
 advance_cur:
-        ld hl,(CUR_COL)
-        ld a,SCR_MAX_COL                    ; Col 79
-        cp l
-        jp z,.wrap
-        inc l
-        ld (CUR_COL),hl
-        ld hl,(CUR_ADDR)
-        inc hl
-        jp .set_addr
+        ld hl,(CUR_COL)                 ; H=line, L=col
+        ld a,SCR_MAX_COL                ; Col 79
+        cp l                            ; At right edge?
+        jp z,.wrap                      ; Yes: wrap to next line
+        inc l                           ; Column += 1
+        ld (CUR_COL),hl                 ; Update col/line
+        ld hl,(CUR_ADDR)                ; Screen address
+        inc hl                          ; Next character cell
+        jp .set_addr                    ; Store and update cursor
 .wrap:
-        call carriage_ret
-        ld (CUR_ADDR),hl
+        call carriage_ret               ; Back to column 0
+        ld (CUR_ADDR),hl                ; Update address
 
 ; ==========================================================================
 ; scroll_line — Advance to next line, scroll if at bottom
 ; ==========================================================================
 scroll_line:
-        ld hl,CUR_LINE
-        inc (hl)
-        ld a,SCR_LINES+1                    ; Line 28 = overflow
-        cp (hl)
-        jp z,.scroll
-        ld hl,(CUR_ADDR)
-        ld de,SCR_STRIDE                    ; Line stride = 120 bytes
-        add hl,de
-        jp c,.clamp
-        ld de,(SCR_END)
-        call cmp_hl_de
-        jp c,.set_addr
+        ld hl,CUR_LINE                  ; Line counter address
+        inc (hl)                        ; Advance line
+        ld a,SCR_LINES+1                ; Line 28 = overflow
+        cp (hl)                         ; Past bottom?
+        jp z,.scroll                    ; Yes: scroll screen
+        ld hl,(CUR_ADDR)                ; Current address
+        ld de,SCR_STRIDE                ; 120 bytes per line
+        add hl,de                       ; Next line address
+        jp c,.clamp                     ; Overflow: wrap
+        ld de,(SCR_END)                 ; End of buffer
+        call cmp_hl_de                  ; Past end?
+        jp c,.set_addr                  ; No: use it
 .clamp:
-        ld hl,SCREEN_BASE
+        ld hl,SCREEN_BASE               ; Wrap to buffer start
 .set_line:
-        ld a,(CUR_COL)
-        call add_a_to_hl
+        ld a,(CUR_COL)                  ; Add column offset
+        call add_a_to_hl                ; HL += col
 .set_addr:
-        ld (CUR_ADDR),hl
+        ld (CUR_ADDR),hl                ; Store new position
 
 ; ==========================================================================
 ; update_cursor — Write cursor position to display hardware
 ; ==========================================================================
 update_cursor:
-        ld a,DISP_CURSOR
-        out (PORT_DISP_CMD),a
-        ld hl,(CUR_COL)
-        ld a,l
-        out (PORT_DISP_DATA),a              ; Column
-        ld a,h
-        out (PORT_DISP_DATA),a              ; Line
-        ret
+        ld a,DISP_CURSOR                ; Cursor register select
+        out (PORT_DISP_CMD),a           ; Send command
+        ld hl,(CUR_COL)                 ; H=line, L=col
+        ld a,l                          ; Column byte
+        out (PORT_DISP_DATA),a          ; Column
+        ld a,h                          ; Line byte
+        out (PORT_DISP_DATA),a          ; Line
+        ret                             ; Done
 
 ; --- Handle scrolling ---
 .scroll:
-        dec (hl)                            ; Keep at line 27
-        ld hl,(SCR_START)
-        ld (CUR_ADDR),hl
-        call init_one_line                  ; Clear new line
-        ld de,(SCR_END)
-        call cmp_hl_de
-        jp c,.scrl_ok
-        ld hl,SCREEN_BASE                   ; Wrap to top
+        dec (hl)                        ; Back to line 27
+        ld hl,(SCR_START)               ; First visible line
+        ld (CUR_ADDR),hl                ; Cursor at top of freed line
+        call init_one_line              ; Clear new bottom line
+        ld de,(SCR_END)                 ; End of buffer
+        call cmp_hl_de                  ; Past end?
+        jp c,.scrl_ok                   ; No: fine
+        ld hl,SCREEN_BASE               ; Wrap to top of buffer
 .scrl_ok:
-        ld (SCR_START),hl
-        ld hl,(CUR_ADDR)
-        jp .set_line
+        ld (SCR_START),hl               ; Advance scroll window
+        ld hl,(CUR_ADDR)                ; Get cursor position
+        jp .set_line                    ; Recalculate + update
 
 ; ==========================================================================
 ; init_display_mem — Fill display buffer with blank lines
 ; ==========================================================================
 init_display_mem:
-        ld hl,SCREEN_BASE
-        ld (SCR_START),hl
-        ld b,SCR_LINES                      ; 27 lines
+        ld hl,SCREEN_BASE               ; Start of display RAM
+        ld (SCR_START),hl               ; Scroll starts here
+        ld b,SCR_LINES                  ; 27 visible lines
 .clr_loop:
-        call init_one_line
-        djnz .clr_loop
-        ld (SCR_LIMIT),hl
-        ld (CUR_ADDR),hl
-        call init_one_line                  ; Extra scroll buffer line
-        ld (SCR_END),hl
-        ret
+        call init_one_line              ; Fill one line
+        djnz .clr_loop                  ; Loop all 27
+        ld (SCR_LIMIT),hl               ; End of visible area
+        ld (CUR_ADDR),hl                ; Cursor after last line
+        call init_one_line              ; Extra scroll buffer line
+        ld (SCR_END),hl                 ; Absolute end of buffer
+        ret                             ; Done
 
 ; ==========================================================================
 ; init_one_line — Init one display line: 80 spaces + 38 NULs + FF 00
 ; Entry/Exit: HL = line start → HL = next line start
 ; ==========================================================================
 init_one_line:
-        push de
-        ld a,SCR_COLS                       ; 80 characters
-        ld e,' '                            ; Space
-        call fill_mem
-        ld a,SCR_PAD                        ; 38 padding bytes
-        ld e,000h                           ; NUL
-        call fill_mem
-        ld (hl),0ffh                        ; End marker
-        inc hl
-        ld (hl),000h
-        inc hl
-        pop de
-        ret
+        push de                         ; Save DE
+        ld a,SCR_COLS                   ; 80 characters
+        ld e,' '                        ; Fill with spaces
+        call fill_mem                   ; Write 80 spaces
+        ld a,SCR_PAD                    ; 38 padding bytes
+        ld e,0                          ; Fill with NUL
+        call fill_mem                   ; Write padding
+        ld (hl),0ffh                    ; End-of-line marker
+        inc hl                          ; Next byte
+        ld (hl),0                       ; Terminator
+        inc hl                          ; HL = next line start
+        pop de                          ; Restore DE
+        ret                             ; Return
 
 ; ==========================================================================
 ; fill_mem — Fill A bytes at (HL) with byte E
 ; ==========================================================================
 fill_mem:
-        ld (hl),e
-        inc hl
-        dec a
-        ret z
-        jp fill_mem
+        ld (hl),e                       ; Write fill byte
+        inc hl                          ; Next position
+        dec a                           ; Count down
+        ret z                           ; Done when zero
+        jp fill_mem                     ; Continue filling
 
 ; ==========================================================================
 ; program_crtc — Program CRT controller registers for scrolling display
 ; ==========================================================================
 program_crtc:
-        ld a,CRTC_INIT
-        out (PORT_CRTC_CMD),a               ; Init CRTC
+        ld a,CRTC_INIT                  ; Init command
+        out (PORT_CRTC_CMD),a           ; Reset CRTC
         ; --- Start address ---
-        ld hl,(SCR_START)
-        ld a,l
-        out (PORT_CRTC_START),a
-        ld a,h
-        out (PORT_CRTC_START),a
+        ld hl,(SCR_START)               ; Scroll window start
+        ld a,l                          ; Low byte
+        out (PORT_CRTC_START),a         ; Write start low
+        ld a,h                          ; High byte
+        out (PORT_CRTC_START),a         ; Write start high
         ; --- End address ---
-        ld de,(SCR_END)
-        call negate_sub
-        dec hl
-        ld a,l
-        out (PORT_CRTC_END),a
-        ld a,h
-        or CRTC_WRAP                        ; Wrap flag
-        out (PORT_CRTC_END),a
+        ld de,(SCR_END)                 ; Scroll window end
+        call negate_sub                 ; HL = END - START
+        dec hl                          ; Adjust (inclusive)
+        ld a,l                          ; Low byte
+        out (PORT_CRTC_END),a           ; Write end low
+        ld a,h                          ; High byte
+        or CRTC_WRAP                    ; Set wrap flag
+        out (PORT_CRTC_END),a           ; Write end high
         ; --- Scroll origin ---
-        ld hl,SCREEN_BASE
-        ld a,l
-        out (PORT_CRTC_SCRL),a
-        ld a,h
-        out (PORT_CRTC_SCRL),a
+        ld hl,SCREEN_BASE               ; Buffer base address
+        ld a,l                          ; Low byte
+        out (PORT_CRTC_SCRL),a          ; Write origin low
+        ld a,h                          ; High byte
+        out (PORT_CRTC_SCRL),a          ; Write origin high
         ; --- Scroll end ---
-        ld de,(SCR_START)
-        call negate_sub
-        dec hl
-        ld a,l
-        out (PORT_CRTC_SEND),a
-        ld a,h
-        or CRTC_WRAP
-        out (PORT_CRTC_SEND),a
+        ld de,(SCR_START)               ; Current scroll start
+        call negate_sub                 ; HL = START - BASE
+        dec hl                          ; Adjust (inclusive)
+        ld a,l                          ; Low byte
+        out (PORT_CRTC_SEND),a          ; Write scroll end low
+        ld a,h                          ; High byte
+        or CRTC_WRAP                    ; Set wrap flag
+        out (PORT_CRTC_SEND),a          ; Write scroll end high
         ; --- Activate ---
-        ld a,CRTC_START
-        out (PORT_CRTC_CMD),a
-        ret
+        ld a,CRTC_START                 ; Start DMA/display
+        out (PORT_CRTC_CMD),a           ; Activate
+        ret                             ; Done
 
 ; ==========================================================================
 ; CRT VSYNC ISR (vector F0 → 0670h)
 ; Reprograms CRTC every frame for smooth scrolling
 ; ==========================================================================
 crt_vsync_isr:
-        push af
-        push de
-        push hl
-        call program_crtc
-        ld a,DISP_ENABLE
-        out (PORT_DISP_CMD),a
-        pop hl
-        pop de
-        pop af
-        ei
-        ret
+        push af                         ; Save A/flags
+        push de                         ; Save DE
+        push hl                         ; Save HL
+        call program_crtc               ; Reprogram scroll regs
+        ld a,DISP_ENABLE                ; Re-enable display
+        out (PORT_DISP_CMD),a           ; Write to display ctrl
+        pop hl                          ; Restore HL
+        pop de                          ; Restore DE
+        pop af                          ; Restore A/flags
+        ei                              ; Re-enable interrupts
+        ret                             ; Return from ISR
 
 ; ==========================================================================
 ; negate_sub — HL = DE - HL
 ; ==========================================================================
 negate_sub:
-        ld a,l
-        cpl
-        ld l,a
-        ld a,h
-        cpl
-        ld h,a
-        inc hl
-        add hl,de
-        ret
+        ld a,l                          ; Low byte of HL
+        cpl                             ; Invert
+        ld l,a                          ; L = ~L
+        ld a,h                          ; High byte of HL
+        cpl                             ; Invert
+        ld h,a                          ; H = ~H
+        inc hl                          ; Two's complement
+        add hl,de                       ; HL = DE - (old HL)
+        ret                             ; Return result in HL
 
 ; ==========================================================================
 ; sub_hl_a — HL = HL - A
 ; ==========================================================================
 sub_hl_a:
-        push bc
-        ld b,a
-        ld a,l
-        sub b
-        ld l,a
-        pop bc
-        ret nc
-        dec h
-        ret
+        push bc                         ; Save BC
+        ld b,a                          ; B = subtrahend
+        ld a,l                          ; L
+        sub b                           ; L - A
+        ld l,a                          ; Update L
+        pop bc                          ; Restore BC
+        ret nc                          ; No borrow: done
+        dec h                           ; Propagate borrow
+        ret                             ; Return
 
 ; ==========================================================================
 ; cmp_hl_de — Compare HL vs DE (carry if HL < DE)
 ; ==========================================================================
 cmp_hl_de:
-        ld a,h
-        cp d
-        ret nz
-        ld a,l
-        cp e
-        ret
+        ld a,h                          ; Compare high bytes
+        cp d                            ; H vs D
+        ret nz                          ; Different: carry set if H<D
+        ld a,l                          ; Compare low bytes
+        cp e                            ; L vs E
+        ret                             ; Carry set if HL < DE
 
 ; ==========================================================================
 ; DATA TABLES
@@ -1475,11 +1475,11 @@ intrlv_tbl:
 
 ; --- FDC command templates (overlapping, read from different offsets) ---
 fdc_cmd_read:
-        defb 009h               ; Read command byte
+        defb 009h                       ; Read command byte
 fdc_cmd_sense:
-        defb 005h               ; Sense interrupt status
+        defb 005h                       ; Sense interrupt status
 fdc_cmd_recal:
-        defb 004h               ; Recalibrate
+        defb 004h                       ; Recalibrate
         defb 001h,000h,000h,000h,000h,000h,000h
 
 ; --- CRT display init parameters (5 bytes + padding) ---
@@ -1495,11 +1495,11 @@ crt_init_data:
 ; ==========================================================================
 ; IM 2 INTERRUPT VECTOR TABLE (07F0h)
 ; ==========================================================================
-        defw crt_vsync_isr                  ; 07F0: CRT refresh
-        defw isr_stub                       ; 07F2: stub
-        defw sio_rx_isr                     ; 07F4: SIO receive
-        defw isr_stub                       ; 07F6: stub
-        defw kbd_isr                        ; 07F8: keyboard
-        defw isr_stub                       ; 07FA: stub
-        defw isr_stub                       ; 07FC: stub
-        defw isr_sio_err                    ; 07FE: SIO error
+        defw crt_vsync_isr              ; 07F0: CRT refresh
+        defw isr_stub                   ; 07F2: stub
+        defw sio_rx_isr                 ; 07F4: SIO receive
+        defw isr_stub                   ; 07F6: stub
+        defw kbd_isr                    ; 07F8: keyboard
+        defw isr_stub                   ; 07FA: stub
+        defw isr_stub                   ; 07FC: stub
+        defw isr_sio_err                ; 07FE: SIO error
