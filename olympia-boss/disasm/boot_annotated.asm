@@ -10,30 +10,30 @@
 ; It provides:
 ;   - Hardware initialisation (CRT, SIO, PPI, FDC, DMA, interrupts)
 ;   - A command prompt ("BOSS ..") accepting:
-;       CR    — Boot from floppy disk (auto-detect drive type)
-;       B addr,size — Load binary from serial and execute
-;       L     — Load from floppy disk
+;       CR    — Boot from floppy (auto-detect local FDC vs SIO controller)
+;       B drive,start — Boot from SIO-linked drive (unit 0-3, start sector)
+;       L     — Load from local FDC
 ;       G addr — Go (jump to address)
-;       *     — Terminal pass-through mode (until ESC)
+;       *     — Keyboard echo mode (type to screen until ESC)
 ;   - Display driver (80x27 scrolling text, cursor management)
-;   - Serial file transfer protocol (block-framed records)
-;   - Floppy disk sector read (active-low FDC interface)
+;   - Block record loader (reads sectors, parses framed records into RAM)
+;   - Floppy disk access via local FDC (active-low) or SIO-linked controller
 ;
-; Memory Map:
-;   0000-07FF : System ROM (this 2K ROM)
-;   0800-0FFF : Character generator ROM (2K, separate chip)
-;   BE00-BFFF : Work RAM (stack at BED2, variables BFD3-BFFF)
-;   F2C6-FxFF : Display character buffer (27 lines x 82 bytes)
-;   FFE6-FFFF : Display state variables
+; Memory Map (only ranges referenced by code):
+;   0000-07FF : System ROM (banks out via port 60h bit 0)
+;   BED2-BFFF : Work RAM (stack at BED2, DMA buf BED3, variables BFD3-BFFF)
+;   F2C6-FFE5 : Display buffer (28 lines × 120 bytes = 3360 bytes)
+;               Each line: 80 chars + 38 pad + 2 end markers
+;   FFE6-FFEF : Display state variables (scroll ptrs, cursor pos)
 ;
 ; I/O Port Map:
 ;   00-01 : DMA controller (address, word count)
 ;   04-07 : CRT controller (start/end/scroll address registers)
 ;   08    : CRT controller command
-;   10    : SIO Channel B status
-;   11    : SIO Channel B data (serial port)
-;   30    : SIO Channel A data
-;   31    : SIO Channel A control
+;   10    : SIO Channel B control (disk controller link)
+;   11    : SIO Channel B data (disk controller link)
+;   30-31 : Interrupt controller? (init writes IM2 vectors here)
+;           Port 31=ctrl/reg select, port 30=data/vector
 ;   40    : 8255 PPI Port A (keyboard data, active-low)
 ;   43    : 8255 PPI control register
 ;   60    : System control (write: ROM bank/drive; read: config)
@@ -51,7 +51,7 @@
 ;   07F8: keyboard       → 053Fh (PPI port A read)
 ;   07FA: stub           → 03D8h (EI; RET)
 ;   07FC: stub           → 03D8h (EI; RET)
-;   07FE: SIO error      → 03DAh (acknowledge + RETI)
+;   07FE: SIO error      → 03DAh (acknowledge + RET)
 ;
 ; Execution Flow:
 ;   0000h  reset        → cold_start (full hardware init)
@@ -310,10 +310,10 @@ cmd_loop:
         ld c,':'                        ; Print ':'
         call putchar                    ; Echo separator
         ex af,af'                       ; Restore command
-        cp '*'                          ; '*' → terminal mode
-        jp z,cmd_terminal               ; Enter passthrough
-        cp 'B'                          ; 'B' → serial boot
-        jp z,cmd_load                   ; Serial binary load
+        cp '*'                          ; '*' → echo mode
+        jp z,cmd_terminal               ; Enter keyboard echo
+        cp 'B'                          ; 'B' → SIO drive boot
+        jp z,cmd_load                   ; SIO-linked drive load
         cp 'L'                          ; 'L' → floppy load
         jp z,cmd_load                   ; Floppy load
         cp 'G'                          ; 'G' → go to address
@@ -325,8 +325,8 @@ cmd_error:
         jp cmd_loop                     ; Back to prompt
 
 ; ==========================================================================
-; COMMAND: B/L — Load binary (serial or floppy)
-; Syntax: B addr,size<CR> or L<CR>
+; COMMAND: B/L — Load from disk (SIO-linked or local FDC)
+; Syntax: B drive,start<CR> or L<CR>
 ; ==========================================================================
 cmd_load:
         ex af,af'                       ; Recover command char
@@ -351,17 +351,17 @@ cmd_load:
         cp CHAR_CR                      ; Must end with CR
         jp nz,cmd_error                 ; Trailing garbage
 
-; --- Common load entry (DE=size/address, AF'=command type) ---
+; --- Common load entry (DE=start sector, AF'=command type) ---
 start_load:
-        ld (LOAD_ADDR),de               ; Save load size
+        ld (LOAD_ADDR),de               ; Save start sector
         ex af,af'                       ; Get command type
         ld (STACK_TOP),a                ; Store command type
         cp 'L'                          ; 'L' → floppy path
         jp z,floppy_load                ; Use FDC path
 
-        ; --- Serial boot: drive select ---
+        ; --- SIO path: enable controller ---
         ld a,SYS_DRV_SEL                ; Select drive
-        out (PORT_SYS_CTRL),a           ; Enable drive controller
+        out (PORT_SYS_CTRL),a           ; Enable SIO drive controller
 
         ; --- Delay (device settle / motor spin-up) ---
         ld de,084c6h                    ; ~34000 iterations
@@ -470,14 +470,14 @@ serial_rx:
         ld hl,0                         ; Zero
         ld (BLOCK_CNT),hl               ; No bytes buffered yet
 .next_rec:
-        call get_srx_byte               ; Record type byte
+        call get_srx_byte               ; Record byte count
         and a                           ; Test for zero
-        jp z,cmd_error                  ; Zero type = error
-        ld c,a                          ; C = record type
-        call get_srx_byte               ; Byte count
-        ld b,a                          ; B = payload length
-        ld a,c                          ; Recover type
-        cp 3                            ; Type ≥ 3: has address
+        jp z,cmd_error                  ; Zero length = error
+        ld c,a                          ; C = byte counter (auto-restarts at 0)
+        call get_srx_byte               ; Record type
+        ld b,a                          ; B = record type
+        ld a,c                          ; Check remaining count
+        cp 3                            ; Count ≥ 3: has address fields
         jp c,.short_rec                 ; Short record: no addr
         call get_srx_byte               ; Address high
         ld h,a                          ; H = addr high
@@ -485,7 +485,7 @@ serial_rx:
         ld l,a                          ; L = addr low
         call get_srx_byte               ; Extra byte (ignored)
 .short_rec:
-        ld a,b                          ; Record subtype byte
+        ld a,b                          ; Record type byte
         cp REC_DATA                     ; Data record
         jp z,.data_rec                  ; Go store bytes
         cp REC_ABORT                    ; Abort
@@ -677,7 +677,7 @@ memcopy:
 ; ==========================================================================
 get_trk_cmp:
         ld a,(DRV_PARAMS)               ; Current drive params
-        and 003h                        ; Side bit → 0 or 2
+        and 003h                        ; Side select (bit 2 → offset 0 or 2?)
         ld hl,TRK_CMP_0                 ; Base of compare table
 add_a_to_hl:
         add a,l                         ; HL += A
@@ -819,8 +819,8 @@ sio_read_stat:
 ; ==========================================================================
 sio_tx_wait:
         in a,(PORT_SIO_B_CTRL)          ; Read SIO status
-        and 010h                        ; TX buffer empty?
-        jp nz,sio_tx_wait               ; Wait until clear
+        and 010h                        ; TX busy?
+        jp nz,sio_tx_wait               ; Wait until not busy
 
 ; ==========================================================================
 ; sio_send_blk — Send C bytes from (HL) to SIO Channel B
@@ -911,12 +911,12 @@ floppy_load:
         out (PORT_FDC_CTRL),a           ; FDC mode select
         ; --- Init FDC command block ---
         ld hl,FDC_CMD                   ; Command buffer
-        ld (hl),1                       ; Track = 1
+        ld (hl),1                       ; +0: ? (command/mode?)
         inc hl                          ; Next field
-        ld (hl),1                       ; Sector = 1
+        ld (hl),1                       ; +1: ? (initial sector?)
         inc hl                          ; Next field
         xor a                           ; A = 0
-        ld (hl),a                       ; Head = 0
+        ld (hl),a                       ; +2: 0 (initial head?)
         ld hl,FDC_PARAMS                ; Working params
         ld (hl),a                       ; Clear param 0
         inc hl                          ; Next byte
@@ -1095,7 +1095,7 @@ fdc_send_data:
         ret                             ; Done
 
 ; ==========================================================================
-; COMMAND: * — Terminal mode (echo until ESC)
+; COMMAND: * — Keyboard echo mode (type to screen until ESC)
 ; ==========================================================================
 cmd_terminal:
         call kbd_getchar                ; Wait for keypress
@@ -1106,15 +1106,15 @@ cmd_terminal:
         jp cmd_terminal                 ; Loop forever
 
 ; ==========================================================================
-; COMMAND: CR — Auto-detect boot from floppy
+; COMMAND: CR — Auto-detect boot (local FDC vs SIO controller)
 ; ==========================================================================
 cmd_boot:
         ld hl,SEC_128                   ; 128-byte sector size
         in a,(PORT_SYS_CTRL)            ; Read system config
-        and SYS_TYPE_BITS               ; Drive type bits
-        ld a,'B'                        ; Assume serial boot
-        jp nz,.set_type                 ; Non-zero = serial
-        ld a,'L'                        ; Zero = floppy
+        and SYS_TYPE_BITS               ; Drive type bits 7:6
+        ld a,'B'                        ; Assume SIO controller
+        jp nz,.set_type                 ; Non-zero = SIO path
+        ld a,'L'                        ; Zero = local FDC
         add hl,hl                       ; Floppy: 256-byte sectors
 .set_type:
         ex de,hl                        ; DE = sector size
@@ -1128,8 +1128,8 @@ cmd_noaddr:
         ld a,c                          ; Terminator char
         cp CHAR_CR                      ; Must be CR
         jp nz,cmd_error                 ; Otherwise error
-        ld b,0                          ; No drive number
-        ld de,1                         ; Default size = 1
+        ld b,0                          ; Drive 0 (default)
+        ld de,1                         ; Start sector = 1
         jp start_load                   ; Begin loading
 
 ; ==========================================================================
