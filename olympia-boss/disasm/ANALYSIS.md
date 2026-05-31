@@ -13,7 +13,7 @@
 
 The Olympia Boss system ROM is the boot monitor for a Z80A-based word processor. On power-up it:
 
-1. Initialises all hardware (8255 PPI, display controller, CRTC, AMD 9519 UIC, 2651 USART)
+1. Initialises all hardware (8255 PPI, display controller, Intel 8257 DMA, AMD 9519 UIC, 2651 USART)
 2. Displays a `BOSS ..` prompt on the 80×27 CRT display
 3. Accepts interactive commands (boot, load, go, terminal echo)
 4. Loads block-framed binary records from either the local µPD765 floppy or a USART-linked remote disk controller into RAM
@@ -44,7 +44,7 @@ Auto-detection (`CR`) reads config bits from port 60h to choose between the two 
 |---------|--------|-------------|
 | 0000h | `reset` | JP to `cold_start` |
 | 0004h | `warm_entry` | JP to `warm_start` (DI already done) |
-| 000Ah | `cold_start` | Full hardware init (PPI, display, CRTC, UIC) |
+| 000Ah | `cold_start` | Full hardware init (PPI, display, 8257 DMA, UIC) |
 | 007Ah | `cmd_loop` | Print `BOSS ..` prompt, dispatch command |
 | ~00C0h | `cmd_load` | Parse B/L command arguments (drive, start sector) |
 | ~0120h | `start_load` | Common load entry; selects FDC or USART path |
@@ -74,8 +74,8 @@ Auto-detection (`CR`) reads config bits from port 60h to choose between the two 
 | ~05E0h | `carriage_ret` | Move cursor to column 0 |
 | ~05F0h | `advance_cur` | Move cursor right, wrap to next line at col 79 |
 | ~0610h | `scroll_line` | Advance one line, scroll display if at bottom |
-| 0670h | `crt_vsync_isr` | Vsync ISR: reprogram CRTC + re-enable display |
-| ~0680h | `program_crtc` | Write scroll window registers to CRT controller |
+| 0670h | `crt_vsync_isr` | Vsync ISR: reprogram 8257 DMA + re-enable display |
+| ~0680h | `program_dma_display` | Program 8257 Ch.2/Ch.3 for display DMA scrolling |
 | ~06A0h | `update_cursor` | Send cursor col/line to display chip (port 81/80) |
 | ~06B0h | `init_display_mem` | Fill display buffer with blank lines |
 | ~06C0h | `init_one_line` | Write 80 spaces + 38 NULs + FF 00 for one line |
@@ -142,13 +142,13 @@ Auto-detection (`CR`) reads config bits from port 60h to choose between the two 
 
 | Port | Dir | Chip | Function |
 |------|-----|------|----------|
-| 00h | OUT | Intel 8257 DMA | Address register (write low byte, then high byte) |
-| 01h | OUT | Intel 8257 DMA | Word count register (write low byte, then high byte) |
-| 04h | OUT | CRT controller | Scroll window start address (low, then high) |
-| 05h | OUT | CRT controller | Scroll window end address (low, then high) |
-| 06h | OUT | CRT controller | Scroll origin address (low, then high) |
-| 07h | OUT | CRT controller | Scroll end address (low, then high) |
-| 08h | OUT | CRT controller | Command (41h=init, C5h=start DMA/run) |
+| 00h | OUT | Intel 8257 DMA | Ch.0 address — floppy sector read (write low, then high) |
+| 01h | OUT | Intel 8257 DMA | Ch.0 word count — floppy sector read (write low, then high) |
+| 04h | OUT | Intel 8257 DMA | Ch.2 address — µPD3301 display DMA (write low, then high) |
+| 05h | OUT | Intel 8257 DMA | Ch.2 word count (bit 7 of high byte = read-from-memory) |
+| 06h | OUT | Intel 8257 DMA | Ch.3 address — auto-reload source for scroll origin |
+| 07h | OUT | Intel 8257 DMA | Ch.3 word count (auto-loaded into Ch.2 on terminal count) |
+| 08h | OUT | Intel 8257 DMA | Mode register (41h=Ch.0 only, C5h=Ch.0+Ch.2+auto-load) |
 | 10h | IN/OUT | 2651 USART | Control/status register |
 | 11h | IN/OUT | 2651 USART | Data register |
 | 30h | OUT | AMD 9519 UIC | Data / interrupt vector (low byte) |
@@ -204,7 +204,7 @@ The AMD 9519 Universal Interrupt Controller is programmed at boot by writing 10 
 2. **8255 PPI init**: mode word BCh (Port A = mode-1 input), set PC2 (strobe), set PC4 (interrupt enable)
 3. Clear `KEY_FLAG`
 4. **Display memory init**: fill 27 lines with spaces (80 × space + 38 × NUL + FFh + 00h), set scroll window
-5. **CRTC init**: write scroll window registers (start, end, origin, scroll-end) via ports 04–07; activate via port 08
+5. **8257 DMA display init**: program Ch.2 (display window) and Ch.3 (scroll origin) via ports 04–07; activate with mode C5h via port 08
 6. Cursor state: column 0, line 27 (bottom)
 7. **Display chip init**: reset (00h), write 5-byte timing table, enable (A0h), set mode (42h), start (C0h)
 8. Fall through to warm_start
@@ -243,11 +243,16 @@ Prints `\r\n BOSS .. ` then waits for a keypress:
 - **Base address:** F2C6h (`SCREEN_BASE`)
 - **Line stride:** 120 bytes = 80 chars + 38 NUL padding + 2 end markers (FFh, 00h)
 - **Total:** 28 lines × 120 bytes = 3360 bytes (27 visible + 1 scroll buffer line)
-- **End markers** per line allow the CRTC/DMA to detect line boundaries
+- **End markers** per line allow the DMA controller to detect line boundaries
 
 ### Scrolling
 
-Scrolling is implemented by advancing the CRTC's start-of-window pointer rather than copying memory. On each vsync the `crt_vsync_isr` calls `program_crtc` to reprogram the four CRTC scroll registers (ports 04–07) to the current `SCR_START` value. When the cursor reaches line 28, `SCR_START` is advanced by one line (120 bytes, wrapping at the buffer end).
+Scrolling is implemented via the 8257's **auto-load** feature (Ch.3 → Ch.2). Rather than copying memory, the firmware advances `SCR_START` and reprograms two DMA channels each frame:
+
+- **Ch.2** (ports 04–05): points at the current display window start, count = window size. The µPD3301 issues DRQ2 to fetch characters through this channel.
+- **Ch.3** (ports 06–07): points at the buffer base (scroll origin), count = bytes before `SCR_START`. When Ch.2 reaches terminal count, the 8257 auto-loads Ch.3’s address/count into Ch.2, implementing circular-buffer wrap.
+
+On each vsync the `crt_vsync_isr` calls `program_dma_display` to reprogram both channels to the current `SCR_START` value. When the cursor reaches line 28, `SCR_START` is advanced by one line (120 bytes, wrapping at the buffer end).
 
 ### Cursor
 
@@ -260,7 +265,7 @@ Cursor position is tracked in RAM (`CUR_COL`, `CUR_LINE`, `CUR_ADDR`) and writte
 ### Local FDC Path (`fdc_read_sector`, 0447h)
 
 - **Chip:** µPD765 on ports 71–73 (all signals active-low — inverted in software)
-- **DMA:** Intel 8257, channel programmed with destination BED3h and count 40FFh; DMA triggered by writing C5h to port 08h (CRTC command)
+- **DMA:** Intel 8257 Ch.0, programmed with destination BED3h and count 40FFh; mode register set to C5h (re-enables all channels including display DMA)
 - **Track 0 detection:** recalibrate command (07h) sent if `TRK_CMP` = FFFFh
 - **Seek:** command 0Fh, 2-byte block (command + track)
 - **Side selection:** physical track = logical track / 2; side = logical track bit 0

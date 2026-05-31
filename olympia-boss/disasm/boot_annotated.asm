@@ -76,10 +76,10 @@ DISP_ENABLE:        equ	0a0h            ; µPD3301 enable display output
 DISP_MODE:          equ	042h            ; µPD3301 set display mode
 DISP_START:         equ	0c0h            ; µPD3301 start display output
 
-; --- CRT controller commands ---
-CRTC_INIT:          equ	041h            ; CRTC initialise
-CRTC_START:         equ	0c5h            ; CRTC start DMA / run
-CRTC_WRAP:          equ	080h            ; Address wrap flag in CRTC registers
+; --- 8257 DMA mode register values ---
+DMA_MODE_INIT:      equ	041h            ; TC-stop + Ch.0 enable (display DMA off)
+DMA_MODE_RUN:       equ	0c5h            ; Auto-load + TC-stop + Ch.2 + Ch.0 (display DMA on)
+DMA_RD_MEM:         equ	080h            ; Count high-byte flag: read-from-memory transfer type
 
 ; --- Serial protocol record types ---
 REC_DATA:           equ	0c2h            ; Data record (store bytes)
@@ -115,14 +115,14 @@ SCR_STRIDE:         equ	120             ; Bytes per display line (80+38+2)
 SCR_MAX_COL:        equ	79              ; Maximum column index (0-based)
 SCR_PAD:            equ	38              ; Padding bytes per line
 
-; --- I/O Port equates ---
-PORT_DMA_ADDR:      equ	000h            ; Intel 8257 DMA — address register (write low then high)
-PORT_DMA_COUNT:     equ	001h            ; Intel 8257 DMA — word count register (write low then high)
-PORT_CRTC_START:    equ	004h
-PORT_CRTC_END:      equ	005h
-PORT_CRTC_SCRL:     equ	006h
-PORT_CRTC_SEND:     equ	007h
-PORT_CRTC_CMD:      equ	008h
+; --- I/O Port equates (Intel 8257 DMA controller: ports 00–08) ---
+PORT_DMA_ADDR:      equ	000h            ; 8257 Ch.0 address — floppy DMA (write low then high)
+PORT_DMA_COUNT:     equ	001h            ; 8257 Ch.0 word count — floppy DMA (write low then high)
+PORT_DMA_CH2_ADDR:  equ	004h            ; 8257 Ch.2 address — display DMA (µPD3301 character fetch)
+PORT_DMA_CH2_COUNT: equ	005h            ; 8257 Ch.2 word count (high byte bit 7 = read-from-memory)
+PORT_DMA_CH3_ADDR:  equ	006h            ; 8257 Ch.3 address — auto-reload source (scroll origin)
+PORT_DMA_CH3_COUNT: equ	007h            ; 8257 Ch.3 word count (auto-loaded into Ch.2 on TC)
+PORT_DMA_MODE:      equ	008h            ; 8257 mode register
 PORT_USART_CTRL:    equ	010h            ; 2651 USART control/status
 PORT_USART_DATA:    equ	011h            ; 2651 USART data
 PORT_UIC_DATA:      equ	030h            ; AMD 9519 UIC data/vector
@@ -217,7 +217,7 @@ cold_start:
 
         ; --- Initialise display memory and CRT controller ---
         call init_display_mem           ; Fill screen with spaces
-        call program_crtc               ; Set up scroll registers
+        call program_dma_display               ; Set up scroll registers
 
         ; --- Initialise cursor state ---
         xor a                           ; A = 0
@@ -639,8 +639,8 @@ do_sector_rw:
         ld a,040h                       ; DMA count high
         out (PORT_DMA_COUNT),a          ; Set transfer count high
         ei                              ; Re-enable interrupts
-        ld a,CRTC_START                 ; Trigger CRT DMA
-        out (PORT_CRTC_CMD),a           ; Start DMA
+        ld a,DMA_MODE_RUN               ; Re-enable all DMA (Ch.0 + Ch.2 + auto-load)
+        out (PORT_DMA_MODE),a           ; Write mode register
 
         ; --- Send seek + read command ---
         call seek_track                 ; Move head to position
@@ -1342,55 +1342,57 @@ fill_mem:
         jp fill_mem                     ; Continue filling
 
 ; ==========================================================================
-; program_crtc — Program CRT controller registers for scrolling display
+; program_dma_display — Program 8257 Ch.2/Ch.3 for µPD3301 display DMA
+;   Ch.2: current display window (auto-reloads from Ch.3 on terminal count)
+;   Ch.3: scroll origin (wraps back to buffer base)
 ; ==========================================================================
-program_crtc:
-        ld a,CRTC_INIT                  ; Init command
-        out (PORT_CRTC_CMD),a           ; Reset CRTC
-        ; --- Start address ---
+program_dma_display:
+        ld a,DMA_MODE_INIT              ; Disable display DMA (keep Ch.0 for floppy)
+        out (PORT_DMA_MODE),a           ; Write mode register
+        ; --- Ch.2 address: display start ---
         ld hl,(SCR_START)               ; Scroll window start
         ld a,l                          ; Low byte
-        out (PORT_CRTC_START),a         ; Write start low
+        out (PORT_DMA_CH2_ADDR),a       ; Ch.2 address low
         ld a,h                          ; High byte
-        out (PORT_CRTC_START),a         ; Write start high
-        ; --- End address ---
+        out (PORT_DMA_CH2_ADDR),a       ; Ch.2 address high
+        ; --- Ch.2 count: display length ---
         ld de,(SCR_END)                 ; Scroll window end
         call negate_sub                 ; HL = END - START
         dec hl                          ; Adjust (inclusive)
         ld a,l                          ; Low byte
-        out (PORT_CRTC_END),a           ; Write end low
+        out (PORT_DMA_CH2_COUNT),a      ; Ch.2 count low
         ld a,h                          ; High byte
-        or CRTC_WRAP                    ; Set wrap flag
-        out (PORT_CRTC_END),a           ; Write end high
-        ; --- Scroll origin ---
+        or DMA_RD_MEM                   ; Set read-from-memory transfer type
+        out (PORT_DMA_CH2_COUNT),a      ; Ch.2 count high
+        ; --- Ch.3 address: scroll origin (auto-reload source) ---
         ld hl,SCREEN_BASE               ; Buffer base address
         ld a,l                          ; Low byte
-        out (PORT_CRTC_SCRL),a          ; Write origin low
+        out (PORT_DMA_CH3_ADDR),a       ; Ch.3 address low
         ld a,h                          ; High byte
-        out (PORT_CRTC_SCRL),a          ; Write origin high
-        ; --- Scroll end ---
+        out (PORT_DMA_CH3_ADDR),a       ; Ch.3 address high
+        ; --- Ch.3 count: bytes before scroll start ---
         ld de,(SCR_START)               ; Current scroll start
         call negate_sub                 ; HL = START - BASE
         dec hl                          ; Adjust (inclusive)
         ld a,l                          ; Low byte
-        out (PORT_CRTC_SEND),a          ; Write scroll end low
+        out (PORT_DMA_CH3_COUNT),a      ; Ch.3 count low
         ld a,h                          ; High byte
-        or CRTC_WRAP                    ; Set wrap flag
-        out (PORT_CRTC_SEND),a          ; Write scroll end high
+        or DMA_RD_MEM                   ; Set read-from-memory transfer type
+        out (PORT_DMA_CH3_COUNT),a      ; Ch.3 count high
         ; --- Activate ---
-        ld a,CRTC_START                 ; Start DMA/display
-        out (PORT_CRTC_CMD),a           ; Activate
+        ld a,DMA_MODE_RUN               ; Enable Ch.2 + Ch.0 + auto-load from Ch.3
+        out (PORT_DMA_MODE),a           ; Start display DMA
         ret                             ; Done
 
 ; ==========================================================================
 ; CRT VSYNC ISR (vector F0 → 0670h)
-; Reprograms CRTC every frame for smooth scrolling
+; Reprograms 8257 DMA every frame for smooth scrolling
 ; ==========================================================================
 crt_vsync_isr:
         push af                         ; Save A/flags
         push de                         ; Save DE
         push hl                         ; Save HL
-        call program_crtc               ; Reprogram scroll regs
+        call program_dma_display               ; Reprogram scroll regs
         ld a,DISP_ENABLE                ; Re-enable display
         out (PORT_UPD3301_CMD),a           ; Write to display ctrl
         pop hl                          ; Restore HL
