@@ -8,16 +8,16 @@
 ;
 ; This is the boot/monitor ROM for the Olympia Boss word processor.
 ; It provides:
-;   - Hardware initialisation (CRT, SIO, PPI, FDC, DMA, interrupts)
+;   - Hardware initialisation (CRT, 2651 USART, 8255 PPI, µPD765 FDC, DMA, AMD 9519 UIC)
 ;   - A command prompt ("BOSS ..") accepting:
-;       CR    — Boot from floppy (auto-detect local FDC vs SIO controller)
-;       B drive,start — Boot from SIO-linked drive (unit 0-3, start sector)
+;       CR    — Boot from floppy (auto-detect local FDC vs USART-linked controller)
+;       B drive,start — Boot from USART-linked drive (unit 0-3, start sector)
 ;       L     — Load from local FDC
 ;       G addr — Go (jump to address)
 ;       *     — Keyboard echo mode (type to screen until ESC)
 ;   - Display driver (80x27 scrolling text, cursor management)
 ;   - Block record loader (reads sectors, parses framed records into RAM)
-;   - Floppy disk access via local FDC (active-low) or SIO-linked controller
+;   - Floppy disk access via local FDC (active-low) or USART-linked controller
 ;
 ; Memory Map (only ranges referenced by code):
 ;   0000-07FF : System ROM (banks out via port 60h bit 0)
@@ -27,35 +27,35 @@
 ;   FFE6-FFEF : Display state variables (scroll ptrs, cursor pos)
 ;
 ; I/O Port Map:
-;   00-01 : DMA controller (address, word count)
+;   00-01 : Intel 8257 DMA controller (address, word count; flip-flop low/high)
 ;   04-07 : CRT controller (start/end/scroll address registers)
 ;   08    : CRT controller command
-;   10    : SIO Channel B control (disk controller link)
-;   11    : SIO Channel B data (disk controller link)
-;   30-31 : Interrupt controller? (init writes IM2 vectors here)
-;           Port 31=ctrl/reg select, port 30=data/vector
+;   10    : 2651 USART control/status (disk controller serial link)
+;   11    : 2651 USART data (disk controller serial link)
+;   30-31 : AMD 9519 UIC (Universal Interrupt Controller)
+;           Port 31=register select, port 30=data/vector
 ;   40    : 8255 PPI Port A (keyboard data, active-low)
 ;   43    : 8255 PPI control register
 ;   60    : System control (write: ROM bank/drive; read: config)
 ;   71    : FDC control/mode select
 ;   72    : FDC status (active-low)
 ;   73    : FDC data (active-low)
-;   80    : Display data port (cursor position, init params)
-;   81    : Display command register
+;   80    : NEC µPD3301 data port (parameter bytes after command)
+;   81    : NEC µPD3301 command register
 ;
 ; Interrupts: IM 2, I=07h, vector table at 07F0h
 ;   07F0: CRT vsync      → 0670h (reprogram CRTC each frame)
 ;   07F2: stub           → 03D8h (EI; RET)
-;   07F4: SIO RX         → 032Ch (serial receive handler)
+;   07F4: USART RX       → 032Ch (serial receive handler)
 ;   07F6: stub           → 03D8h (EI; RET)
 ;   07F8: keyboard       → 053Fh (PPI port A read)
 ;   07FA: stub           → 03D8h (EI; RET)
 ;   07FC: stub           → 03D8h (EI; RET)
-;   07FE: SIO error      → 03DAh (acknowledge + RET)
+;   07FE: USART error    → 03DAh (acknowledge + RET)
 ;
 ; Execution Flow:
 ;   0000h  reset        → cold_start (full hardware init)
-;   0004h  warm_entry   → warm_start (SIO/display reinit only)
+;   0004h  warm_entry   → warm_start (USART/display reinit only)
 ;   007Ah  cmd_loop     — prompt and command dispatch
 ;   0190h  serial_rx    — serial binary receive protocol
 ;   0447h  fdc_read_sector — floppy disk sector read
@@ -68,13 +68,13 @@ CHAR_LF:            equ	00ah            ; Line feed
 CHAR_CR:            equ	00dh            ; Carriage return
 CHAR_ESC:           equ	01bh            ; Escape
 
-; --- Display command bytes ---
-DISP_RESET:         equ	000h            ; Reset display controller
-DISP_ON:            equ	020h            ; Display on
-DISP_CURSOR:        equ	081h            ; Set cursor position register
-DISP_ENABLE:        equ	0a0h            ; Enable display output
-DISP_MODE:          equ	042h            ; Set display mode
-DISP_START:         equ	0c0h            ; Start display output
+; --- NEC µPD3301 command bytes ---
+DISP_RESET:         equ	000h            ; µPD3301 reset
+DISP_ON:            equ	020h            ; µPD3301 display on
+DISP_CURSOR:        equ	081h            ; µPD3301 set cursor position
+DISP_ENABLE:        equ	0a0h            ; µPD3301 enable display output
+DISP_MODE:          equ	042h            ; µPD3301 set display mode
+DISP_START:         equ	0c0h            ; µPD3301 start display output
 
 ; --- CRT controller commands ---
 CRTC_INIT:          equ	041h            ; CRTC initialise
@@ -116,25 +116,25 @@ SCR_MAX_COL:        equ	79              ; Maximum column index (0-based)
 SCR_PAD:            equ	38              ; Padding bytes per line
 
 ; --- I/O Port equates ---
-PORT_DMA_ADDR:      equ	000h
-PORT_DMA_COUNT:     equ	001h
+PORT_DMA_ADDR:      equ	000h            ; Intel 8257 DMA — address register (write low then high)
+PORT_DMA_COUNT:     equ	001h            ; Intel 8257 DMA — word count register (write low then high)
 PORT_CRTC_START:    equ	004h
 PORT_CRTC_END:      equ	005h
 PORT_CRTC_SCRL:     equ	006h
 PORT_CRTC_SEND:     equ	007h
 PORT_CRTC_CMD:      equ	008h
-PORT_SIO_B_CTRL:    equ	010h
-PORT_SIO_B_DATA:    equ	011h
-PORT_SIO_A_DATA:    equ	030h
-PORT_SIO_A_CTRL:    equ	031h
+PORT_USART_CTRL:    equ	010h            ; 2651 USART control/status
+PORT_USART_DATA:    equ	011h            ; 2651 USART data
+PORT_UIC_DATA:      equ	030h            ; AMD 9519 UIC data/vector
+PORT_UIC_REG:       equ	031h            ; AMD 9519 UIC register select
 PORT_PPI_A:         equ	040h
 PORT_PPI_CTRL:      equ	043h
 PORT_SYS_CTRL:      equ	060h
 PORT_FDC_CTRL:      equ	071h
 PORT_FDC_STAT:      equ	072h
 PORT_FDC_DATA:      equ	073h
-PORT_DISP_DATA:     equ	080h
-PORT_DISP_CMD:      equ	081h
+PORT_UPD3301_DATA:  equ	080h            ; NEC µPD3301 — parameter data port
+PORT_UPD3301_CMD:   equ	081h            ; NEC µPD3301 — command register
 
 ; --- Miscellaneous constants ---
 RELAY_LEN:          equ	5               ; Length of relay code copied to RAM
@@ -157,17 +157,17 @@ SEC_PER_TRK:        equ	0bfdch          ; Sectors per track
 FDC_PARAMS:         equ	0bfdfh          ; FDC working parameters
 TRK_CMP_0:          equ	0bfe1h          ; Track compare (side 0)
 TRK_CMP_1:          equ	0bfe3h          ; Track compare (side 1)
-SIO_CMD:            equ	0bfe5h          ; SIO command buffer
-SIO_SEEK:           equ	0bfe6h          ; SIO seek command area
-SIO_SEEKD:          equ	0bfe7h          ; SIO seek data byte
+USART_CMD:          equ	0bfe5h          ; USART command buffer (to remote disk controller)
+USART_SEEK:         equ	0bfe6h          ; USART seek command area
+USART_SEEKD:        equ	0bfe7h          ; USART seek data byte
 DRV_CONFIG:         equ	0bfe8h          ; Drive config (density/sides/sector)
 DRV_PARAMS:         equ	0bfe9h          ; Drive parameter copy
 CUR_TRACK:          equ	0bfeah          ; Current track number
 SIDE_FLAG:          equ	0bfebh          ; Current side flag
 STEP_RATE:          equ	0bfech          ; Step rate / interleave
 FDC_SEEKBUF:        equ	0bfedh          ; FDC seek parameter buffer
-SIO_RXBUF:          equ	0bff0h          ; SIO receive buffer
-SIO_DONE:           equ	0bffbh          ; SIO completion flag
+USART_RXBUF:        equ	0bff0h          ; 2651 USART receive buffer
+USART_DONE:         equ	0bffbh          ; USART completion flag
 SEC_SIZE:           equ	0bffch          ; Sector size (16-bit)
 PARAM_PTR:          equ	0bff9h          ; Pointer to drive param table
 DRV_TYPE:           equ	0bff8h          ; Drive type/density flags
@@ -227,20 +227,20 @@ cold_start:
 
         ; --- Display controller setup ---
         xor a                           ; A = 0
-        out (PORT_DISP_CMD),a           ; Reset display chip
+        out (PORT_UPD3301_CMD),a           ; Reset display chip
         ld hl,crt_init_data             ; 5-byte timing table
         ld b,5                          ; 5 parameters
 .crt_loop:
         ld a,(hl)                       ; Next timing byte
-        out (PORT_DISP_DATA),a          ; Write param to display
+        out (PORT_UPD3301_DATA),a          ; Write param to display
         inc hl                          ; Advance table pointer
         djnz .crt_loop                  ; Loop all 5
         ld a,DISP_ENABLE                ; Enable display output
-        out (PORT_DISP_CMD),a           ; Enable display
+        out (PORT_UPD3301_CMD),a           ; Enable display
         ld a,DISP_MODE                  ; Mode register
-        out (PORT_DISP_CMD),a           ; Set display mode
+        out (PORT_UPD3301_CMD),a           ; Set display mode
         ld a,DISP_START                 ; Activate
-        out (PORT_DISP_CMD),a           ; Activate output
+        out (PORT_UPD3301_CMD),a           ; Activate output
 
 ; ==========================================================================
 ; WARM START — Reinit serial + display (preserves PPI/CRT timing)
@@ -250,40 +250,40 @@ warm_start:
         call update_cursor              ; Sync cursor to hardware
 
         ld a,DISP_ON                    ; Switch on
-        out (PORT_DISP_CMD),a           ; Display ON
+        out (PORT_UPD3301_CMD),a           ; Display ON
 
-        ; --- SIO Channel A initialisation (10 register pairs) ---
+        ; --- AMD 9519 UIC initialisation (8 interrupt vectors + 2 control) ---
         xor a                           ; A = 0
-        out (PORT_SIO_A_CTRL),a         ; Reset register pointer
-        ld hl,sio_init_tbl              ; Table of reg/val pairs
+        out (PORT_UIC_REG),a            ; Reset UIC register pointer
+        ld hl,uic_init_tbl              ; Table of reg/val pairs
         ld b,10                         ; 10 pairs to write
-.sio_loop:
+.uic_loop:
         ld a,(hl)                       ; Register address
-        out (PORT_SIO_A_CTRL),a         ; Select register
+        out (PORT_UIC_REG),a            ; Select UIC register
         inc hl                          ; Point to value
         ld a,(hl)                       ; Register value
-        out (PORT_SIO_A_DATA),a         ; Write it
+        out (PORT_UIC_DATA),a           ; Write interrupt vector low byte
         inc hl                          ; Next pair
-        djnz .sio_loop                  ; Loop all 10
+        djnz .uic_loop                  ; Loop all 10
 
-        ; --- SIO post-init commands ---
-        ld a,040h                       ; Reset RX CRC
-        out (PORT_SIO_A_CTRL),a         ; Send to SIO
-        ld a,0a1h                       ; Enable INT on next RX
-        out (PORT_SIO_A_CTRL),a         ; Send to SIO
+        ; --- UIC post-init commands ---
+        ld a,040h                       ; UIC control: reset
+        out (PORT_UIC_REG),a            ; Send to AMD 9519
+        ld a,0a1h                       ; UIC control: enable interrupts
+        out (PORT_UIC_REG),a            ; Send to AMD 9519
 
         ; --- Set up IM 2 interrupts ---
         ld a,007h                       ; Vector page = 07xxh
         ld i,a                          ; Set interrupt vector base
         im 2                            ; Vectored interrupt mode
 
-        ; --- Final SIO config ---
-        ld a,02fh                       ; Reset TX INT pending
-        out (PORT_SIO_A_CTRL),a         ; Send to SIO
-        ld a,02ch                       ; Reset TX INT pending
-        out (PORT_SIO_A_CTRL),a         ; Send to SIO
-        ld a,020h                       ; Enable INT on next RX
-        out (PORT_SIO_A_CTRL),a         ; Send to SIO
+        ; --- Final UIC config ---
+        ld a,02fh                       ; UIC control word
+        out (PORT_UIC_REG),a            ; Send to AMD 9519
+        ld a,02ch                       ; UIC control word
+        out (PORT_UIC_REG),a            ; Send to AMD 9519
+        ld a,020h                       ; UIC control word
+        out (PORT_UIC_REG),a            ; Send to AMD 9519
         ei                              ; Enable interrupts
 
 ; ==========================================================================
@@ -312,8 +312,8 @@ cmd_loop:
         ex af,af'                       ; Restore command
         cp '*'                          ; '*' → echo mode
         jp z,cmd_terminal               ; Enter keyboard echo
-        cp 'B'                          ; 'B' → SIO drive boot
-        jp z,cmd_load                   ; SIO-linked drive load
+        cp 'B'                          ; 'B' → USART-linked drive boot
+        jp z,cmd_load                   ; USART-linked drive load
         cp 'L'                          ; 'L' → floppy load
         jp z,cmd_load                   ; Floppy load
         cp 'G'                          ; 'G' → go to address
@@ -325,7 +325,7 @@ cmd_error:
         jp cmd_loop                     ; Back to prompt
 
 ; ==========================================================================
-; COMMAND: B/L — Load from disk (SIO-linked or local FDC)
+; COMMAND: B/L — Load from disk (USART-linked or local FDC)
 ; Syntax: B drive,start<CR> or L<CR>
 ; ==========================================================================
 cmd_load:
@@ -359,9 +359,9 @@ start_load:
         cp 'L'                          ; 'L' → floppy path
         jp z,floppy_load                ; Use FDC path
 
-        ; --- SIO path: enable controller ---
+        ; --- USART path: enable controller ---
         ld a,SYS_DRV_SEL                ; Select drive
-        out (PORT_SYS_CTRL),a           ; Enable SIO drive controller
+        out (PORT_SYS_CTRL),a           ; Enable USART-linked drive controller
 
         ; --- Delay (device settle / motor spin-up) ---
         ld de,084c6h                    ; ~34000 iterations
@@ -401,16 +401,16 @@ start_load:
 .sel_params:
         ld (PARAM_PTR),hl               ; Store selected table
 
-        ; --- Build and send SIO command ---
-        ld de,SIO_CMD                   ; Command buffer
+        ; --- Build and send USART command ---
+        ld de,USART_CMD                   ; Command buffer
         ld a,3                          ; Command byte count
         ld (de),a                       ; Store length
         inc de                          ; Point to payload
         ld c,2                          ; Copy 2 bytes from table
-        call memcopy                    ; Param table → SIO_CMD
+        call memcopy                    ; Param table → USART_CMD
         ld c,3                          ; 3 bytes to send
-        ld hl,SIO_CMD                   ; Point to buffer
-        call sio_send_blk               ; Send to SIO
+        ld hl,USART_CMD                   ; Point to buffer
+        call usart_send_blk             ; Send to USART-linked controller
 
         ; --- Init track limits ---
         ld hl,0ffffh                    ; -1 = never seeked
@@ -421,8 +421,8 @@ start_load:
         ld hl,DRV_CONFIG                ; Config byte address
         ld (hl),004h                    ; Init config command
         ld c,2                          ; 2 bytes
-        call sio_send_blk               ; Send config request
-        call sio_read_stat              ; Read drive response
+        call usart_send_blk               ; Send config request
+        call usart_read_stat              ; Read drive response
         ld a,(hl)                       ; Status byte
         and 008h                        ; Bit 3 = double sided?
         rlca                            ; Shift bit 3
@@ -526,7 +526,7 @@ relay_code:
 
 ; ==========================================================================
 ; get_srx_byte — Get one byte from serial receive buffer
-; Replenishes buffer from SIO when empty. Adjusts C count.
+; Replenishes buffer from USART-linked controller when empty. Adjusts C count.
 ; ==========================================================================
 get_srx_byte:
         inc c                           ; Test C without clobbering
@@ -579,7 +579,7 @@ do_sector_rw:
         cp 'L'                          ; 'L' = floppy
         jp z,fdc_read_sector            ; FDC path
 
-        ; --- Serial/SIO path ---
+        ; --- USART-linked path ---
         push hl                         ; Save sector address
         push de                         ; Save sector size
         call divide_hl_e                ; HL/E → track/sector
@@ -646,14 +646,14 @@ do_sector_rw:
         call seek_track                 ; Move head to position
         ld c,9                          ; 9-byte command block
         ld hl,DRV_CONFIG                ; Config + command data
-        call sio_send_wait              ; Send and wait for reply
+        call usart_send_wait              ; Send and wait for reply
         dec a                           ; 1 = success
         jp nz,.chk_err                  ; Non-1: check error
         pop hl                          ; Done: recover address
         inc hl                          ; Next sector
         ret                             ; Return to caller
 .chk_err:
-        ld a,(SIO_RXBUF+2)              ; Error status byte
+        ld a,(USART_RXBUF+2)              ; Error status byte
         and 084h                        ; Fatal error bits?
         jp z,.do_dma                    ; Retry if recoverable
         call get_trk_cmp                ; Get track compare ptr
@@ -723,17 +723,17 @@ seek_track:
         ex de,hl                        ; DE = compare slot
         jp z,.recal                     ; Track 0 = recalibrate
         ; --- Seek to non-zero track ---
-        ld hl,SIO_SEEKD                 ; Seek data buffer
+        ld hl,USART_SEEKD                 ; Seek data buffer
         ld (hl),a                       ; Target track number
         ld b,FDC_SEEK                   ; Seek command code
         ld c,3                          ; 3-byte command
 .exec_seek:
-        ld hl,SIO_SEEK                  ; Command buffer
+        ld hl,USART_SEEK                ; Command buffer
         ld a,(DRV_PARAMS)               ; Drive select byte
         ld (hl),a                       ; Drive select param
         dec hl                          ; Point to command byte
         ld (hl),b                       ; Command byte
-        call sio_send_wait              ; Send and wait
+        call usart_send_wait              ; Send and wait
         ld a,(CUR_TRACK)                ; New position
         ld (de),a                       ; Update compare slot
         ret                             ; Done
@@ -747,28 +747,28 @@ seek_track:
         ld b,FDC_RECAL                  ; Recal command code
         ld c,2                          ; 2-byte command
         call .exec_seek                 ; Send recal
-        ld a,(SIO_DONE)                 ; Completion status
+        ld a,(USART_DONE)                 ; Completion status
         dec a                           ; 1 = success
         ld a,0                          ; Don't affect flags
         ret z                           ; Success: done
         jp .recal                       ; Retry recal
 
 ; ==========================================================================
-; SIO RX INTERRUPT HANDLER (vector F4 → 032Ch)
+; USART RX INTERRUPT HANDLER (vector F4 → 032Ch)
 ; ==========================================================================
-sio_rx_isr:
+usart_rx_isr:
         push af                         ; Save A
         ld a,03ah                       ; RETI acknowledge
-        out (PORT_SIO_A_CTRL),a         ; Tell SIO we're handling it
+        out (PORT_UIC_REG),a            ; Acknowledge interrupt to AMD 9519
         ei                              ; Re-enable interrupts
         push bc                         ; Save BC
         push hl                         ; Save HL
 .rx_loop:
-        call sio_read_stat              ; Poll for data
+        call usart_read_stat              ; Poll for data
         ld a,b                          ; Byte count received
         and a                           ; Any data?
         jp z,.rx_ack                    ; No data: send ACK
-        ld hl,SIO_RXBUF+1               ; Point to status byte
+        ld hl,USART_RXBUF+1               ; Point to status byte
         ld a,(hl)                       ; Read status
         rlca                            ; Bit 7 → carry
         jp c,.rx_err                    ; Bit 7 set: error
@@ -776,7 +776,7 @@ sio_rx_isr:
         jp c,.rx_err                    ; Bit 6 set: error
         ld a,1                          ; Normal completion
 .rx_done:
-        ld (SIO_DONE),a                 ; Signal completion
+        ld (USART_DONE),a                 ; Signal completion
         pop hl                          ; Restore HL
         pop bc                          ; Restore BC
         pop af                          ; Restore A
@@ -785,21 +785,21 @@ sio_rx_isr:
         ld a,07fh                       ; Error flag
         jp .rx_done                     ; Signal error
 .rx_ack:
-        ld hl,SIO_CMD                   ; Command buffer
+        ld hl,USART_CMD                   ; Command buffer
         ld (hl),008h                    ; ACK command byte
         ld c,1                          ; 1 byte to send
-        call sio_tx_wait                ; Send ACK
+        call usart_tx_wait                ; Send ACK
         jp .rx_loop                     ; Continue polling
 
 ; ==========================================================================
-; sio_read_stat — Read status/data bytes from SIO Channel B
-; Exit: B = byte count received, data at SIO_RXBUF+
+; usart_read_stat — Read status/data bytes from 2651 USART (Channel B, ports 10-11)
+; Exit: B = byte count received, data at USART_RXBUF+
 ; ==========================================================================
-sio_read_stat:
-        ld hl,SIO_RXBUF                 ; Buffer start
+usart_read_stat:
+        ld hl,USART_RXBUF               ; Buffer start
         ld b,0                          ; Clear byte count
 .poll:
-        in a,(PORT_SIO_B_CTRL)          ; Read SIO status
+        in a,(PORT_USART_CTRL)          ; Read 2651 USART status
         rlca                            ; Bit 7 → carry
         jp nc,.poll                     ; Wait for ready
         ld c,a                          ; Save status
@@ -808,49 +808,49 @@ sio_read_stat:
         ld a,c                          ; Recover status
         rlca                            ; Check another bit
         jp nc,.poll                     ; Not valid yet
-        in a,(PORT_SIO_B_DATA)          ; Read data byte
+        in a,(PORT_USART_DATA)          ; Read byte from 2651 USART
         inc hl                          ; Advance buffer pointer
         inc b                           ; Count bytes
         ld (hl),a                       ; Store in buffer
         jp .poll                        ; Check for more
 
 ; ==========================================================================
-; sio_tx_wait — Wait for TX buffer empty, then send
+; usart_tx_wait — Wait for 2651 USART TX buffer empty, then send
 ; ==========================================================================
-sio_tx_wait:
-        in a,(PORT_SIO_B_CTRL)          ; Read SIO status
+usart_tx_wait:
+        in a,(PORT_USART_CTRL)          ; Read 2651 USART status
         and 010h                        ; TX busy?
-        jp nz,sio_tx_wait               ; Wait until not busy
+        jp nz,usart_tx_wait               ; Wait until not busy
 
 ; ==========================================================================
-; sio_send_blk — Send C bytes from (HL) to SIO Channel B
+; usart_send_blk — Send C bytes from (HL) to 2651 USART (ports 10-11)
 ; ==========================================================================
-sio_send_blk:
-        in a,(PORT_SIO_B_CTRL)          ; SIO status
+usart_send_blk:
+        in a,(PORT_USART_CTRL)          ; 2651 USART status
         rlca                            ; Check ready bit
-        jp nc,sio_send_blk              ; Wait for ready
+        jp nc,usart_send_blk              ; Wait for ready
         rlca                            ; Check busy bit
-        jp c,sio_send_blk               ; Wait for not busy
+        jp c,usart_send_blk               ; Wait for not busy
         ld a,(hl)                       ; Get byte to send
-        out (PORT_SIO_B_DATA),a         ; Transmit byte
+        out (PORT_USART_DATA),a         ; Transmit byte via 2651 USART
         inc hl                          ; Next source byte
         dec c                           ; Count down
-        jp nz,sio_send_blk              ; Loop until all sent
+        jp nz,usart_send_blk              ; Loop until all sent
         ret                             ; Done
 
 ; ==========================================================================
-; sio_send_wait — Send block and wait for ISR completion
+; usart_send_wait — Send block and wait for ISR completion
 ; ==========================================================================
-sio_send_wait:
-        call sio_tx_wait                ; Wait TX ready
+usart_send_wait:
+        call usart_tx_wait                ; Wait TX ready
         xor a                           ; A = 0
-        ld (SIO_DONE),a                 ; Clear completion flag
+        ld (USART_DONE),a                 ; Clear completion flag
         di                              ; Critical section
         ld a,02ah                       ; Reset TX INT
-        out (PORT_SIO_A_CTRL),a         ; Enable TX interrupt
+        out (PORT_UIC_REG),a            ; Enable TX interrupt via UIC
         ei                              ; End critical section
 .wait:
-        ld a,(SIO_DONE)                 ; Poll completion flag
+        ld a,(USART_DONE)                 ; Poll completion flag
         or a                            ; Set yet?
         jp z,.wait                      ; No: keep waiting
         ret                             ; Done, status in A
@@ -894,11 +894,11 @@ isr_stub:
         ei                              ; Re-enable interrupts
         ret                             ; Return (do nothing)
 
-isr_sio_err:
+isr_usart_err:
         ei                              ; Re-enable interrupts
         push af                         ; Save A
-        ld a,07fh                       ; SIO error acknowledge
-        out (PORT_SIO_A_CTRL),a         ; Clear error condition
+        ld a,07fh                       ; AMD 9519 UIC error acknowledge
+        out (PORT_UIC_REG),a            ; Clear error condition in UIC
         pop af                          ; Restore A
         ret                             ; Return
 
@@ -1106,14 +1106,14 @@ cmd_terminal:
         jp cmd_terminal                 ; Loop forever
 
 ; ==========================================================================
-; COMMAND: CR — Auto-detect boot (local FDC vs SIO controller)
+; COMMAND: CR — Auto-detect boot (local FDC vs USART-linked controller)
 ; ==========================================================================
 cmd_boot:
         ld hl,SEC_128                   ; 128-byte sector size
         in a,(PORT_SYS_CTRL)            ; Read system config
         and SYS_TYPE_BITS               ; Drive type bits 7:6
-        ld a,'B'                        ; Assume SIO controller
-        jp nz,.set_type                 ; Non-zero = SIO path
+        ld a,'B'                        ; Assume USART-linked controller
+        jp nz,.set_type                 ; Non-zero = USART path
         ld a,'L'                        ; Zero = local FDC
         add hl,hl                       ; Floppy: 256-byte sectors
 .set_type:
@@ -1273,12 +1273,12 @@ scroll_line:
 ; ==========================================================================
 update_cursor:
         ld a,DISP_CURSOR                ; Cursor register select
-        out (PORT_DISP_CMD),a           ; Send command
+        out (PORT_UPD3301_CMD),a           ; Send command
         ld hl,(CUR_COL)                 ; H=line, L=col
         ld a,l                          ; Column byte
-        out (PORT_DISP_DATA),a          ; Column
+        out (PORT_UPD3301_DATA),a          ; Column
         ld a,h                          ; Line byte
-        out (PORT_DISP_DATA),a          ; Line
+        out (PORT_UPD3301_DATA),a          ; Line
         ret                             ; Done
 
 ; --- Handle scrolling ---
@@ -1392,7 +1392,7 @@ crt_vsync_isr:
         push hl                         ; Save HL
         call program_crtc               ; Reprogram scroll regs
         ld a,DISP_ENABLE                ; Re-enable display
-        out (PORT_DISP_CMD),a           ; Write to display ctrl
+        out (PORT_UPD3301_CMD),a           ; Write to display ctrl
         pop hl                          ; Restore HL
         pop de                          ; Restore DE
         pop af                          ; Restore A/flags
@@ -1450,18 +1450,48 @@ str_prompt:
         defb CHAR_NUL
 
 ; --- Floppy drive parameter tables (7 bytes each) ---
-; Format: [id, id2, type/mode, param1, param2, param3, param4]
-drv_param_a:
-        defb 053h,030h,028h,001h,010h,020h,000h
+; Byte layout:
+;   [0]   Controller type ID byte 1  (sent to USART-linked controller as type-select)
+;   [1]   Controller type ID byte 2
+;   [2]   Max tracks (track count; used as high byte of SEC_SIZE geometry word)
+;   [3]   N    — µPD765 sector size code (0=128B, 1=256B, 2=512B)
+;   [4]   EOT  — µPD765 end-of-track / sectors per track
+;   [5]   GPL  — µPD765 gap length (read)
+;   [6]   DTL  — µPD765 data length (ignored when N>0; = actual byte count when N=0)
+;
+; SEC_SIZE word = (byte[2] << 8) | byte[4] = (max_tracks, sectors_per_track)
 
-drv_param_b:
-        defb 053h,030h,04ch,001h,01ah,00eh,000h
+drv_param_a:        ; 5.25" 40-track: 16 sectors × 256 B = 160 KB
+        defb 053h   ; [0] controller ID byte 1
+        defb 030h   ; [1] controller ID byte 2
+        defb 028h   ; [2] max tracks = 40
+        defb 001h   ; [3] N=1 → 256 bytes/sector
+        defb 010h   ; [4] EOT = 16 sectors/track
+        defb 020h   ; [5] GPL = 32
+        defb 000h   ; [6] DTL (ignored, N>0)
 
-drv_param_c:
-        defb 053h,030h,04ch,000h,01ah,007h,080h
+drv_param_b:        ; 8" double-density: 26 sectors × 256 B
+        defb 053h   ; [0] controller ID byte 1
+        defb 030h   ; [1] controller ID byte 2
+        defb 04ch   ; [2] max tracks = 76
+        defb 001h   ; [3] N=1 → 256 bytes/sector
+        defb 01ah   ; [4] EOT = 26 sectors/track
+        defb 00eh   ; [5] GPL = 14 (standard 8" DD read gap)
+        defb 000h   ; [6] DTL (ignored, N>0)
 
-; --- SIO Channel A initialisation table (20 bytes, 10 pairs) ---
-sio_init_tbl:
+drv_param_c:        ; 8" single-density IBM 3740: 26 sectors × 128 B
+        defb 053h   ; [0] controller ID byte 1
+        defb 030h   ; [1] controller ID byte 2
+        defb 04ch   ; [2] max tracks = 76
+        defb 000h   ; [3] N=0 → 128 bytes/sector
+        defb 01ah   ; [4] EOT = 26 sectors/track
+        defb 007h   ; [5] GPL = 7 (standard 8" SD read gap)
+        defb 080h   ; [6] DTL = 128 (= sector size when N=0)
+
+; --- AMD 9519 UIC initialisation table (20 bytes: 8 vector pairs + 2 control) ---
+; Each pair: (register_select, vector_low_byte) written to PORT_UIC_REG/DATA
+; Vectors e0-e7 map to IM2 table entries at 07F0h-07FEh
+uic_init_tbl:
         defb 0e0h,0f0h,0e1h,0f2h,0e2h,0f4h,0e3h,0f6h
         defb 0e4h,0f8h,0e5h,0fah,0e6h,0fch,0e7h,0feh
         defb 0c0h,07fh,0b0h,0ffh
@@ -1497,9 +1527,9 @@ crt_init_data:
 ; ==========================================================================
         defw crt_vsync_isr              ; 07F0: CRT refresh
         defw isr_stub                   ; 07F2: stub
-        defw sio_rx_isr                 ; 07F4: SIO receive
+        defw usart_rx_isr               ; 07F4: USART receive
         defw isr_stub                   ; 07F6: stub
         defw kbd_isr                    ; 07F8: keyboard
         defw isr_stub                   ; 07FA: stub
         defw isr_stub                   ; 07FC: stub
-        defw isr_sio_err                ; 07FE: SIO error
+        defw isr_usart_err              ; 07FE: USART error

@@ -124,15 +124,24 @@ The ROM communicates with user through a built-in video terminal driver (SAA5120
 9. **POST — Timer test:** Enable IM1, run counter for calibration period, verify expected tick count (0x23–0x25)
 10. **POST complete (0x074F):** Initialize display, print `"\r\n AUTO-TEST : "`, then "OK" or error bit codes
 
-### POST Error Bits (displayed as digit 0–7)
+### POST Error Table
 
-| Bit | Meaning |
-|-----|---------|
-| 0 | Video RAM failure |
-| 1 | Main RAM failure |
-| 2 | FDC register failure |
-| 3 | Serial port failure |
-| 4 | Timer/interrupt failure |
+On completion, POST displays `AUTO-TEST : OK` if all tests pass. On failure, it prints each failed test's bit number as an ASCII digit on a separate line. Error bits accumulate in A' (shadow register) and are displayed LSB-first.
+
+| Bit | Displayed | Subsystem | Test Method | Pass Criteria |
+|-----|-----------|-----------|-------------|---------------|
+| 0 | `0` | Video RAM (SAA5120) | Write incrementing pattern (+0x55) to all 25×80 cells via two-phase column protocol, then read back attributes | All 4000 attribute bytes match expected pattern |
+| 1 | `1` | Main RAM (32 KB) | Write/verify pattern across 0x8000–0xFFFF; then relocate test code to high RAM to test 0x0000–0x7FFF with bank select (port 0x20 = 0x60) | All 32768 bytes match in both banks |
+| 2 | `2` | FDC (FD1797) | Force-interrupt, then write rotating pattern (+0x55) to track, sector, and data registers; read back after 80-cycle settle delay; repeat until pattern wraps to 0 | All register read-backs match written values across full cycle |
+| 3 | `3` | Serial (2661 UART) | Configure for 8N1 loopback (mode 0x4E/0x3E, cmd 0xA7); send each pattern byte, wait 256-cycle delay, read back | All echoed bytes match sent values; TX-ready within 255 polls |
+| 4 | `4` | Timer (CTC / IM1) | Enable IM1 interrupts; ISR at 0x0038 increments D on each tick; main loop counts down 65536 iterations; check D | Tick count D in range 35–36 (0x23–0x24) |
+
+**Example display on failure:** If VRAM and FDC fail, the screen shows:
+```
+ AUTO-TEST : 
+0
+2
+```
 
 ---
 
